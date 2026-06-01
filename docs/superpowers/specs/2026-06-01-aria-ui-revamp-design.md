@@ -9,7 +9,7 @@
 
 ## 1. Overview
 
-ARIA's existing UI is a sci-fi HUD (teal-on-black, three-column panels, CSS-ring orb) that reads as "weekend project." This revamp replaces it with a **voice-first, 3D-immersive cofounder interface** in the visual lineage of Trillion (hellotrillion.ai) and the technical lineage of Refik Anadol / Active Theory / Edan Kwan.
+ARIA is the AI co-founder of **Jack & Jewell Consulting** (Randy Jewell's IT managed services + AI consulting firm, Greenwood, IN). Her existing UI is a sci-fi HUD (teal-on-black, three-column panels, CSS-ring orb) that reads as "weekend project." This revamp replaces it with a **voice-first, 3D-immersive cofounder interface** in the visual lineage of Trillion (hellotrillion.ai) and the technical lineage of Refik Anadol / Active Theory / Edan Kwan.
 
 **Three things change:**
 
@@ -99,7 +99,7 @@ Every label, every section header, every pill is preceded by `◦ ` (small open 
 
 Left to right:
 
-- **Brand:** "A.R.I.A." (Space Grotesk 600 15px) · separator · "J&J Consulting" (Geist 500 dim) · location pill ("Greenwood, IN", muted)
+- **Brand:** "A.R.I.A." (Space Grotesk 600 15px) · separator · "**Jack & Jewell Consulting**" (Geist 500 dim) · location pill ("Greenwood, IN", muted)
 - **Pills row:**
   - `◦ tokens · 12.8K · today` (lime dot pulses, counts live)
   - `◦ spend · $0.42` (amber)
