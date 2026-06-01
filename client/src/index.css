@@ -48,3 +48,56 @@ html, body, #root {
   color: var(--text-dim);
 }
 .eyebrow::before { content: "◦ "; color: var(--accent); margin-right: 4px; }
+
+/* ============== TOP BAR ============== */
+.top {
+  padding: 16px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 30;
+  backdrop-filter: blur(14px);
+  background: rgba(3,3,7,0.7);
+  border-bottom: 1px solid var(--border);
+  height: 64px;
+}
+.brand-text { font-family: var(--font-display); font-size: 15px; letter-spacing: -0.01em; font-weight: 600; }
+.brand-text .div { color: var(--text-mute); font-weight: 400; margin: 0 8px; }
+.brand-text .sub { color: var(--text-dim); font-weight: 500; }
+.brand-text .loc { color: var(--text-mute); font-weight: 400; font-size: 13px; margin-left: 8px; }
+
+.pills { display: flex; gap: 8px; align-items: center; }
+.pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid var(--border-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text);
+  backdrop-filter: blur(8px);
+  transition: all 0.18s ease;
+}
+.pill .label { color: var(--text-mute); letter-spacing: 0.06em; text-transform: uppercase; font-size: 9px; }
+.pill .val { color: var(--text); font-weight: 500; font-size: 12px; }
+.pill .delta { font-size: 10px; }
+.pill .dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
+.pill.tokens .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: tokpulse 2s ease-in-out infinite; }
+.pill.tokens .val.live { color: var(--accent); }
+@keyframes tokpulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.pill.cost .dot { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+.pill.cost .val { color: var(--warn); }
+.pill.revenue .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.pill.revenue .progress { width: 30px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+.pill.revenue .progress .fill { height: 100%; background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.pill.latency .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.pill.latency .val.fast { color: var(--accent); }
+.pill.latency .val.slow { color: var(--warn); }
+.presence-mark {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+  padding-left: 14px; border-left: 1px solid var(--border);
+}
+.presence-mark .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: tokpulse 2.4s ease-in-out infinite; }
