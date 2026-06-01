@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { ARIA_CORE_VS } from './shaders/ariaCore.vert.glsl.js';
+import { ARIA_CORE_FS } from './shaders/ariaCore.frag.glsl.js';
 
 /**
  * createScene — mounts a Three.js scene into the given hosts.
@@ -34,6 +36,29 @@ export function createScene({ canvas, labelLayer, tooltip, data, workStates }) {
   controls.maxDistance = 24;
   controls.target.set(0, 0, 0);
 
+  // ── ARIA CORE ─────────────────────────────────────────────────
+  const coreUniforms = {
+    uTime:   { value: 0 },
+    uPulse:  { value: 0.0 },
+    uAccent: { value: new THREE.Color(0xC5FF4D) },
+    uDeep:   { value: new THREE.Color(0x0a0e1a) },
+    uIridA:  { value: new THREE.Color(0xC5FF4D) },
+    uIridB:  { value: new THREE.Color(0x7AC8FF) },
+    uIridC:  { value: new THREE.Color(0xE89FE8) },
+  };
+  const coreGeom = new THREE.IcosahedronGeometry(1.55, 6);
+  const coreMat = new THREE.ShaderMaterial({
+    uniforms: coreUniforms,
+    vertexShader:   ARIA_CORE_VS,
+    fragmentShader: ARIA_CORE_FS,
+    transparent: false,
+  });
+  const coreMesh = new THREE.Mesh(coreGeom, coreMat);
+  const ariaNode = data.nodes.find(n => n.id === 'aria');
+  if (!ariaNode) throw new Error('createScene: aria hub node missing from data.nodes');
+  coreMesh.userData = { ...ariaNode, _color: '#C5FF4D' };
+  scene.add(coreMesh);
+
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
     renderer.setSize(w, h, false);
@@ -44,9 +69,18 @@ export function createScene({ canvas, labelLayer, tooltip, data, workStates }) {
   const ro = new ResizeObserver(resize);
   ro.observe(stage);
 
+  const clock = new THREE.Clock();
   let rafId;
   function animate() {
     rafId = requestAnimationFrame(animate);
+    const t = clock.getElapsedTime();
+    // Soft baseline voice pulse (Phase D wires real speak/listen states)
+    const speakEnv = 0.5 + 0.5 * Math.sin(t * 0.45);
+    const voicePulse = 0.18 + speakEnv * 0.25;
+
+    coreUniforms.uTime.value  = t;
+    coreUniforms.uPulse.value = voicePulse;
+
     controls.update();
     renderer.render(scene, camera);
   }
