@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { ARIA_CORE_VS } from './shaders/ariaCore.vert.glsl.js';
 import { ARIA_CORE_FS } from './shaders/ariaCore.frag.glsl.js';
+import { ARIA_SHELL_VS, ARIA_SHELL_FS } from './shaders/ariaShell.frag.glsl.js';
 
 /**
  * createScene — mounts a Three.js scene into the given hosts.
@@ -59,6 +60,42 @@ export function createScene({ canvas, labelLayer, tooltip, data, workStates }) {
   coreMesh.userData = { ...ariaNode, _color: '#C5FF4D' };
   scene.add(coreMesh);
 
+  // ── OUTER SHELL ───────────────────────────────────────────────
+  const shellMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uAccent: { value: new THREE.Color(0xC5FF4D) } },
+    vertexShader: ARIA_SHELL_VS,
+    fragmentShader: ARIA_SHELL_FS,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.FrontSide,
+  });
+  const shellMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(2.05, 3), shellMat);
+  scene.add(shellMesh);
+
+  // ── INNER EMBER ───────────────────────────────────────────────
+  const emberMat = new THREE.MeshBasicMaterial({ color: 0xC5FF4D, transparent: true, opacity: 0.92 });
+  const emberMesh = new THREE.Mesh(new THREE.SphereGeometry(0.55, 32, 32), emberMat);
+  scene.add(emberMesh);
+
+  // ── WIREFRAME HALOS (constructed/scientific gravitas) ─────────
+  const ariaWireframe = new THREE.LineSegments(
+    new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(1.72, 2)),
+    new THREE.LineBasicMaterial({
+      color: 0xC5FF4D, transparent: true, opacity: 0.22,
+      blending: THREE.AdditiveBlending,
+    })
+  );
+  scene.add(ariaWireframe);
+  const ariaWireframe2 = new THREE.LineSegments(
+    new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(2.55, 1)),
+    new THREE.LineBasicMaterial({
+      color: 0xC5FF4D, transparent: true, opacity: 0.09,
+      blending: THREE.AdditiveBlending,
+    })
+  );
+  scene.add(ariaWireframe2);
+
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
     renderer.setSize(w, h, false);
@@ -80,6 +117,12 @@ export function createScene({ canvas, labelLayer, tooltip, data, workStates }) {
 
     coreUniforms.uTime.value  = t;
     coreUniforms.uPulse.value = voicePulse;
+    shellMat.uniforms.uTime.value = t;
+    emberMesh.scale.setScalar(1.0 + Math.sin(t * 2.3) * 0.08 + voicePulse * 0.15);
+    ariaWireframe.rotation.y  =  t * 0.10;
+    ariaWireframe.rotation.x  = Math.sin(t * 0.15) * 0.15;
+    ariaWireframe2.rotation.y = -t * 0.06;
+    ariaWireframe2.rotation.z = Math.cos(t * 0.10) * 0.12;
 
     controls.update();
     renderer.render(scene, camera);
