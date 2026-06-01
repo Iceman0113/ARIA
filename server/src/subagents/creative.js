@@ -1,7 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { WEB_TOOLS, webSearch } from './shared.js';
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// Lazy — env vars aren't loaded yet at module-eval time
+let _client = null;
+const getClient = () => _client ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const SYSTEM = `You are Creative — ARIA's social media and advertising sub-agent for a technology consulting and app development firm.
 
@@ -60,7 +62,7 @@ export async function runCreative(input, onEvent) {
   while (iterations < 4) {
     iterations++;
 
-    const response = await client.messages.create({
+    const response = await getClient().messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 2048,
       system: SYSTEM,

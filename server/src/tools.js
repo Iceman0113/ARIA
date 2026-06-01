@@ -3,11 +3,16 @@ import * as cheerio from 'cheerio';
 import crypto from 'crypto';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import Stripe from 'stripe';
+import Anthropic from '@anthropic-ai/sdk';
 import { upsertEntry, resolveIssue, getMemory } from './memory.js';
 import { getClients, upsertClient } from './clients.js';
 import { runScout } from './subagents/scout.js';
 import { runHunter } from './subagents/hunter.js';
 import { runCreative } from './subagents/creative.js';
+import { runHermes } from './subagents/hermes.js';
+import { publishPost as publishLinkedInPost, loadAuth as loadLinkedInAuth, getTargets as getLinkedInTargets } from './linkedin.js';
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // ── Tool definitions for Claude ───────────────────────────────────
 
@@ -28,27 +33,12 @@ export const TOOL_DEFINITIONS = [
     },
   },
   {
-    name: 'get_engineering_status',
-    description: 'Get live engineering health from GitHub: open PRs, CI/CD status, recent deploys, commit velocity, open issues. Call when asked about engineering, code, PRs, deploys, CI, or tech debt.',
+    name: 'track_mrr_vs_bridge',
+    description: 'Calculate current gross MRR from all active clients vs the $16,500 bridge target. Shows gap, percentage complete, and how many more clients needed at current average. Call for any revenue status question, morning briefing, or pipeline check.',
     input_schema: {
       type: 'object',
       properties: {},
       required: [],
-    },
-  },
-  {
-    name: 'get_customer_health',
-    description: 'Get customer health from Intercom: at-risk customers, open support conversations, recent unhappy signals. Call when asked about customers, churn, support, or user satisfaction.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        focus: {
-          type: 'string',
-          enum: ['churn_risk', 'support', 'all'],
-          description: 'What aspect of customer health to focus on',
-        },
-      },
-      required: ['focus'],
     },
   },
   {
@@ -62,7 +52,7 @@ export const TOOL_DEFINITIONS = [
   },
   {
     name: 'get_business_summary',
-    description: 'Get a full snapshot of all metrics at once: revenue, engineering, customers, and competitors. Use when asked for an overall update or morning briefing.',
+    description: 'Get a full snapshot of all current metrics: revenue, clients, and competitor monitoring. Use when asked for an overall update or morning briefing.',
     input_schema: {
       type: 'object',
       properties: {},
@@ -71,7 +61,7 @@ export const TOOL_DEFINITIONS = [
   },
   {
     name: 'save_to_memory',
-    description: 'Save something important to your persistent memory across sessions. Call this proactively when you learn a goal, a decision is made, an issue is identified, or important context is shared. Do NOT save trivial information — only things that would change how you advise this company.',
+    description: 'Save something important to your persistent memory across sessions. Call this proactively when you learn a goal, a decision is made, an issue is identified, or important context is shared. Do NOT save trivial information — only things that would change how you advise Randy.',
     input_schema: {
       type: 'object',
       properties: {
@@ -82,7 +72,7 @@ export const TOOL_DEFINITIONS = [
         },
         key: {
           type: 'string',
-          description: 'Short snake_case identifier, e.g. "mrr_target" or "ci_flaky_issue"',
+          description: 'Short snake_case identifier, e.g. "mrr_target" or "stale_lead_acme"',
         },
         value: {
           type: 'string',
@@ -106,38 +96,14 @@ export const TOOL_DEFINITIONS = [
     },
   },
   {
-    name: 'get_product_analytics',
-    description: 'Get product analytics from PostHog: DAU, WAU, MAU, new user signups, engagement ratio, retention. Call when asked about user growth, activation, retention, engagement, product usage, or funnels.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        period: {
-          type: 'string',
-          enum: ['7d', '30d', '90d'],
-          description: 'Lookback window for trend comparison',
-        },
-      },
-      required: ['period'],
-    },
-  },
-  {
-    name: 'get_sprint_health',
-    description: 'Get engineering sprint health from Linear: open issues by priority, blockers, overdue tasks, cycle progress, team throughput. Call when asked about sprint, backlog, priorities, blockers, or what the team is working on.',
-    input_schema: {
-      type: 'object',
-      properties: {},
-      required: [],
-    },
-  },
-  {
     name: 'delegate_to_scout',
-    description: 'Hand off a research task to Scout, your web intelligence sub-agent. Scout searches the web, reads pages, and returns a structured briefing. Use when asked to research a company, find news about a client, analyze a competitor in depth, investigate a technology, or gather intel before a meeting.',
+    description: 'Hand off a research task to Scout, your web intelligence sub-agent. Scout searches the web, reads pages, and returns a structured briefing. Use when asked to research a company, find news about a client, investigate a technology, or gather intel before a meeting.',
     input_schema: {
       type: 'object',
       properties: {
         task: {
           type: 'string',
-          description: 'Specific research task. Be detailed: "Research Acme Corp — recent news, tech stack, leadership, any signs of a digital transformation initiative" or "Find what ServiceNow announced at Knowledge 2025 and how it affects our positioning."',
+          description: 'Specific research task. Be detailed: "Research Acme Corp — recent news, leadership, tech stack, any signs of IT pain points" or "Find Indianapolis SMBs in manufacturing with 10–50 employees."',
         },
         focus: {
           type: 'string',
@@ -150,22 +116,36 @@ export const TOOL_DEFINITIONS = [
   },
   {
     name: 'delegate_to_hunter',
-    description: 'Hand off a lead generation task to Hunter, your prospecting sub-agent. Hunter searches for qualified companies that match given criteria and returns structured prospects with fit scores and suggested first moves. Use when asked to find new clients, build a prospect list, or identify companies in a target market.',
+    description: 'Hand off a lead generation task to Hunter, your prospecting sub-agent. Hunter searches for qualified SMBs in the Indianapolis/Greenwood area that match given criteria and returns structured prospects with fit scores. Use when asked to find new clients or build a prospect list.',
     input_schema: {
       type: 'object',
       properties: {
-        industry: { type: 'string', description: 'Target industry or sector, e.g. "healthcare", "financial services", "manufacturing"' },
-        region: { type: 'string', description: 'Geographic target, e.g. "Northeast US", "Chicago metro", "Texas"' },
-        size: { type: 'string', description: 'Company size range, e.g. "100–500 employees", "mid-market"' },
-        signals: { type: 'string', description: 'Buying signals to look for, e.g. "recent funding, legacy ERP modernization, rapid hiring"' },
+        industry: { type: 'string', description: 'Target industry or sector, e.g. "accounting", "legal", "manufacturing", "healthcare"' },
+        region: { type: 'string', description: 'Geographic target — default to "Indianapolis/Greenwood Indiana" if not specified' },
+        size: { type: 'string', description: 'Company size range, e.g. "5–50 employees", "small business"' },
+        signals: { type: 'string', description: 'Buying signals to look for, e.g. "no dedicated IT staff, growing headcount, recent tech issues"' },
         notes: { type: 'string', description: 'Any additional context or specific requirements' },
       },
       required: ['industry'],
     },
   },
   {
+    name: 'delegate_to_hermes',
+    description: 'Hand off a task to Hermes — your background agent with persistent memory, 40+ tools, and channel reach. Hermes is good at: things you want remembered across days (learning your habits), longer autonomous work that doesn\'t need real-time voice, tasks that touch external systems Randy has connected (MCP servers, channel integrations), and anything where "the agent should keep getting better at this" matters. Hermes is NOT the right tool for: quick lookups (use your own tools), Randy-facing snark or persona (you handle that), or anything time-critical where a 5–10s spawn cost is too much.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        task: {
+          type: 'string',
+          description: 'The full task instruction for Hermes. Be specific and self-contained — Hermes doesn\'t see your conversation with Randy. Include any context Hermes needs (client name, target, deadline, expected output format).',
+        },
+      },
+      required: ['task'],
+    },
+  },
+  {
     name: 'delegate_to_creative',
-    description: 'Hand off an ad or content brief to Creative, your social media sub-agent. Creative writes B2B ad copy variations for LinkedIn, Meta, or Google with targeting recommendations. Use when asked to write ads, create campaign copy, draft a LinkedIn post, or develop social media content.',
+    description: 'Hand off a content or ad brief to Creative, your content sub-agent. Creative writes LinkedIn posts, email copy, and ad variations in Randy\'s voice. Use when asked to write posts, draft outreach, or develop social media content.',
     input_schema: {
       type: 'object',
       properties: {
@@ -174,17 +154,17 @@ export const TOOL_DEFINITIONS = [
           enum: ['linkedin', 'meta', 'google', 'general'],
           description: 'Target platform',
         },
-        objective: { type: 'string', description: 'Campaign goal: awareness, lead gen, retargeting, event promotion, etc.' },
-        audience: { type: 'string', description: 'Target audience, e.g. "CTOs and VPs of IT at mid-market healthcare companies"' },
-        tone: { type: 'string', description: 'Desired tone: authoritative, conversational, urgent, consultative' },
-        context: { type: 'string', description: 'Service being promoted, any offer or hook, relevant context' },
+        objective: { type: 'string', description: 'Campaign goal: awareness, lead gen, thought leadership, client win announcement' },
+        audience: { type: 'string', description: 'Target audience, e.g. "small business owners in Indianapolis who handle their own IT"' },
+        tone: { type: 'string', description: 'Desired tone: authoritative, conversational, educational' },
+        context: { type: 'string', description: 'Service being promoted, any offer or hook, relevant context about Jack & Jewell' },
       },
       required: ['objective'],
     },
   },
   {
     name: 'get_client_roster',
-    description: 'Get the full client roster: all clients with their status, monthly value, key contacts, project health, and notes. Call when asked about clients, accounts, engagements, delivery, or which clients are at risk.',
+    description: 'Get the full client roster: all clients/contacts with their status, monthly value, tier, and notes. Call when asked about clients, accounts, who owes follow-up, or who is at risk.',
     input_schema: {
       type: 'object',
       properties: {},
@@ -193,38 +173,94 @@ export const TOOL_DEFINITIONS = [
   },
   {
     name: 'update_client',
-    description: 'Create a new client or update an existing one in the roster. Use when you learn about a new engagement, when a client\'s status changes, or when there is new information about a project or account. Omit id to create new.',
+    description: 'Create a new client/contact or update an existing one in the roster. Use when you learn about a new prospect, when a client status changes, or when there is new information about an account. Omit id to create new.',
     input_schema: {
       type: 'object',
       properties: {
-        id: {
-          type: 'string',
-          description: 'Existing client ID to update — omit to create a new client',
-        },
-        name: {
-          type: 'string',
-          description: 'Client or company name',
-        },
+        id: { type: 'string', description: 'Existing client ID to update — omit to create a new client' },
+        name: { type: 'string', description: 'Client or company name' },
         status: {
           type: 'string',
-          enum: ['active', 'at-risk', 'paused', 'churned'],
-          description: 'active=healthy engagement, at-risk=churn signal detected, paused=on hold, churned=lost',
+          enum: ['lead', 'prospect', 'active', 'at-risk', 'churned'],
+          description: 'lead=new, prospect=in conversation, active=paying client, at-risk=churn signal, churned=lost',
         },
-        monthlyValue: {
-          type: 'number',
-          description: 'Monthly contracted value in USD',
-        },
-        keyContact: {
+        client_type: {
           type: 'string',
-          description: 'Primary point of contact name and/or title',
+          enum: ['break-fix', 'starter', 'standard', 'growth', 'ai-consulting'],
+          description: 'Service tier this client is on or being pitched',
         },
-        notes: {
-          type: 'string',
-          description: 'Latest notes, signals, or context about this client',
-        },
+        mrr: { type: 'number', description: 'Monthly recurring revenue from this client in USD' },
+        email: { type: 'string', description: 'Primary contact email' },
+        phone: { type: 'string', description: 'Primary contact phone' },
+        notes: { type: 'string', description: 'Latest notes, signals, or context about this client' },
       },
       required: [],
     },
+  },
+  {
+    name: 'draft_conversion_email',
+    description: 'Draft a personalized email to convert an existing break-fix client to a monthly managed services retainer. Call when Randy wants to pitch a retainer to a current client.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        client_name: { type: 'string', description: 'Name of the client or company' },
+        client_context: { type: 'string', description: 'What you know about them — history, pain points, recent work done, relationship length' },
+        recommended_tier: {
+          type: 'string',
+          enum: ['starter', 'standard', 'growth'],
+          description: 'Which tier to pitch',
+        },
+      },
+      required: ['client_name', 'recommended_tier'],
+    },
+  },
+  {
+    name: 'generate_proposal',
+    description: 'Generate a complete managed services proposal from call notes. Call after Randy has a prospect conversation and wants a professional proposal drafted.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        prospect_name: { type: 'string', description: 'Name of the prospect or company' },
+        call_notes: { type: 'string', description: "Randy's raw notes from the discovery call" },
+        recommended_tier: {
+          type: 'string',
+          enum: ['starter', 'standard', 'growth'],
+          description: 'Which tier to propose',
+        },
+        user_count: { type: 'number', description: 'Number of users at the company' },
+      },
+      required: ['prospect_name', 'call_notes', 'recommended_tier'],
+    },
+  },
+  {
+    name: 'publish_to_linkedin',
+    description: 'Publish a post DIRECTLY to LinkedIn via the official API. Randy can post as himself OR as a Company Page he admins (like Jack & Jewell). Use ONLY after Randy has explicitly approved the exact text AND confirmed who he wants to post as — call get_linkedin_targets first if you don\'t know what Pages are available. Posts are immediate, not scheduled, and there is no undo from the API.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        content:   { type: 'string', description: 'The exact final post text Randy approved. Word-for-word.' },
+        author:    {
+          type: 'string',
+          description: 'Who to post as. "person" or "me" = Randy\'s personal feed (default). "organization" or "page" = his admin\'d Company Page (or the only one if there\'s exactly one). To pick a specific Page, pass the Page name (e.g. "Jack & Jewell"), the vanity URL slug, or the full URN (urn:li:organization:NNNN). Returns an error if author is invalid.',
+        },
+        visibility: {
+          type: 'string',
+          enum: ['PUBLIC', 'CONNECTIONS'],
+          description: 'PUBLIC = anyone on LinkedIn can see; CONNECTIONS = only Randy\'s 1st-degree network. Default PUBLIC for business-development posts. (Company Page posts are always PUBLIC.)',
+        },
+      },
+      required: ['content'],
+    },
+  },
+  {
+    name: 'check_linkedin_connection',
+    description: 'Check whether Randy\'s LinkedIn is connected (auth tokens stored) and when the token expires. Call this before posting if you\'re not sure, or when Randy asks "is LinkedIn connected?"',
+    input_schema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'get_linkedin_targets',
+    description: 'Get the list of who Randy can post as on LinkedIn — his personal account plus any Company Pages he admins (like Jack & Jewell). Call this BEFORE publish_to_linkedin if Randy hasn\'t said which identity to use, or when he asks "who can ARIA post as?"',
+    input_schema: { type: 'object', properties: {}, required: [] },
   },
 ];
 
@@ -233,44 +269,62 @@ export const TOOL_DEFINITIONS = [
 export async function callTool(name, input, onEvent) {
   switch (name) {
     case 'get_revenue_metrics':    return getRevenueMetrics(input.period || '30d');
-    case 'get_engineering_status': return getEngineeringStatus();
-    case 'get_customer_health':    return getCustomerHealth(input.focus || 'all');
+    case 'track_mrr_vs_bridge':    return trackMrrVsBridge();
     case 'save_to_memory':         return upsertEntry(input);
     case 'get_memory':             return getMemory();
     case 'check_competitors':      return checkCompetitors();
-    case 'get_product_analytics':  return getProductAnalytics(input.period || '30d');
-    case 'get_sprint_health':      return getSprintHealth();
     case 'delegate_to_scout':      return runScout(input.task, input.focus, onEvent);
-    case 'delegate_to_hunter':    return runHunter(input, onEvent);
-    case 'delegate_to_creative':  return runCreative(input, onEvent);
+    case 'delegate_to_hunter':     return runHunter(input, onEvent);
+    case 'delegate_to_creative':   return runCreative(input, onEvent);
+    case 'delegate_to_hermes':     return runHermes(input, onEvent);
     case 'get_client_roster':      return getClients();
     case 'update_client':          return upsertClient(input);
-    case 'get_business_summary': {
-      const [revenue, engineering, customers, competitors, product, sprint] = await Promise.all([
-        getRevenueMetrics('30d'),
-        getEngineeringStatus(),
-        getCustomerHealth('all'),
-        checkCompetitors(),
-        getProductAnalytics('30d'),
-        getSprintHealth(),
-      ]);
-      return { revenue, engineering, customers, competitors, product, sprint };
+    case 'draft_conversion_email': return draftConversionEmail(input);
+    case 'generate_proposal':      return generateProposal(input);
+    case 'publish_to_linkedin':    return publishLinkedInPost(input);
+    case 'get_linkedin_targets':   return getLinkedInTargets();
+    case 'check_linkedin_connection': {
+      const auth = await loadLinkedInAuth();
+      if (!auth) return { connected: false, action: 'Visit http://localhost:3001/auth/linkedin to authorize.' };
+      const expiresAt = new Date(auth.expires_at).getTime();
+      return {
+        connected: true,
+        memberUrn: auth.member_urn,
+        expiresAt: auth.expires_at,
+        daysUntilExpiry: Math.floor((expiresAt - Date.now()) / 86400000),
+      };
     }
+    case 'get_business_summary': {
+      const [revenue, mrr, clients, competitors] = await Promise.all([
+        getRevenueMetrics('30d'),
+        trackMrrVsBridge(),
+        getClients(),
+        checkCompetitors(),
+      ]);
+      return { revenue, mrr, clients, competitors };
+    }
+    // Phase 1 disabled integrations
+    case 'get_engineering_status':
+      return { disabled: true, message: 'GitHub integration enabled in Phase 3' };
+    case 'get_customer_health':
+      return { disabled: true, message: 'Intercom integration enabled in Phase 3' };
+    case 'get_product_analytics':
+      return { disabled: true, message: 'PostHog integration enabled in Phase 4' };
+    case 'get_sprint_health':
+      return { disabled: true, message: 'Linear integration enabled in Phase 3' };
     default: return { error: `Unknown tool: ${name}` };
   }
 }
 
 export async function getAllMetrics() {
   try {
-    const [revenue, engineering, customers, competitors, product, sprint] = await Promise.all([
+    const [revenue, mrr, clients, competitors] = await Promise.all([
       getRevenueMetrics('30d'),
-      getEngineeringStatus(),
-      getCustomerHealth('all'),
+      trackMrrVsBridge(),
+      getClients(),
       checkCompetitors(),
-      getProductAnalytics('30d'),
-      getSprintHealth(),
     ]);
-    return { revenue, engineering, customers, competitors, product, sprint, updatedAt: new Date().toISOString() };
+    return { revenue, mrr, clients, competitors, updatedAt: new Date().toISOString() };
   } catch {
     return null;
   }
@@ -320,88 +374,32 @@ async function getRevenueMetrics(period) {
   }
 }
 
-// ── GitHub ────────────────────────────────────────────────────────
+// ── MRR vs Bridge Target ──────────────────────────────────────────
 
-async function getEngineeringStatus() {
-  if (!process.env.GITHUB_TOKEN) return demoEngineering();
-
-  try {
-    const headers = {
-      Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
-      Accept: 'application/vnd.github.v3+json',
-    };
-    const base = `https://api.github.com/repos/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO}`;
-
-    const [prs, runs, commits, issues] = await Promise.all([
-      axios.get(`${base}/pulls?state=open&per_page=25`, { headers }).then(r => r.data),
-      axios.get(`${base}/actions/runs?per_page=15`, { headers }).then(r => r.data.workflow_runs || []),
-      axios.get(`${base}/commits?per_page=20`, { headers }).then(r => r.data),
-      axios.get(`${base}/issues?state=open&per_page=25&filter=all`, { headers }).then(r => r.data),
-    ]);
-
-    const lastRun = runs[0];
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const recentCommits = commits.filter(c => new Date(c.commit.author.date) > sevenDaysAgo);
-    const failingCI = runs.filter(r => r.conclusion === 'failure').length;
-
-    return {
-      openPRs: prs.length,
-      prList: prs.slice(0, 5).map(p => ({ title: p.title, author: p.user.login, draft: p.draft })),
-      ciStatus: lastRun?.conclusion || lastRun?.status || 'unknown',
-      lastCIRun: lastRun ? {
-        name: lastRun.name,
-        status: lastRun.status,
-        conclusion: lastRun.conclusion,
-        updatedAt: lastRun.updated_at,
-      } : null,
-      failingCICount: failingCI,
-      commitsLast7d: recentCommits.length,
-      openIssues: issues.filter(i => !i.pull_request).length,
-      lastCommit: commits[0] ? {
-        message: commits[0].commit.message.split('\n')[0],
-        author: commits[0].commit.author.name,
-        date: commits[0].commit.author.date,
-      } : null,
-      demo: false,
-    };
-  } catch (err) {
-    return { error: err.message, demo: false };
-  }
-}
-
-// ── Intercom ──────────────────────────────────────────────────────
-
-async function getCustomerHealth(focus) {
-  if (!process.env.INTERCOM_TOKEN) return demoCustomers(focus);
+async function trackMrrVsBridge() {
+  const bridgeTarget = Number(process.env.BRIDGE_MRR_TARGET) || 16500;
 
   try {
-    const headers = {
-      Authorization: `Bearer ${process.env.INTERCOM_TOKEN}`,
-      Accept: 'application/json',
-    };
-
-    const [conversations, contacts] = await Promise.all([
-      axios.get('https://api.intercom.io/conversations?per_page=50&sort_field=updated_at&sort_order=desc&open=true', { headers }).then(r => r.data),
-      axios.get('https://api.intercom.io/contacts?per_page=50&sort_field=updated_at&sort_order=desc', { headers }).then(r => r.data),
-    ]);
-
-    const openCount = conversations.total_count || conversations.conversations?.length || 0;
-    const recentConversations = (conversations.conversations || []).slice(0, 10).map(c => ({
-      subject: c.source?.subject || '(no subject)',
-      author: c.source?.author?.name || 'Unknown',
-      updatedAt: new Date(c.updated_at * 1000).toISOString(),
-      priority: c.priority,
-    }));
+    const { clients, totalMonthlyValue } = await getClients();
+    const activeClients = (clients || []).filter(c => c.status === 'active' || c.status === 'at-risk');
+    const grossMrr = totalMonthlyValue || 0;
+    const gap = bridgeTarget - grossMrr;
+    const pct = parseFloat(((grossMrr / bridgeTarget) * 100).toFixed(1));
+    const avgMrr = activeClients.length > 0 ? grossMrr / activeClients.length : 0;
+    const clientsNeeded = avgMrr > 0 ? Math.ceil(gap / avgMrr) : null;
 
     return {
-      openConversations: openCount,
-      recentConversations,
-      totalContacts: contacts.total_count || 0,
-      focus,
-      demo: false,
+      grossMrr,
+      bridgeTarget,
+      gap: Math.max(0, gap),
+      percentComplete: pct,
+      activeClientCount: activeClients.length,
+      avgMrrPerClient: Math.round(avgMrr),
+      clientsNeededToClose: clientsNeeded,
+      onTrack: grossMrr >= bridgeTarget,
     };
   } catch (err) {
-    return { error: err.message, demo: false };
+    return { error: err.message };
   }
 }
 
@@ -457,149 +455,138 @@ async function checkCompetitors() {
   };
 }
 
-// ── PostHog (product analytics) ───────────────────────────────────
+// ── Draft conversion email (Claude sub-call) ──────────────────────
 
-async function getProductAnalytics(period) {
-  if (!process.env.POSTHOG_API_KEY || !process.env.POSTHOG_PROJECT_ID) {
-    return demoProductAnalytics(period);
-  }
+async function draftConversionEmail({ client_name, client_context, recommended_tier }) {
+  const tierDetails = {
+    starter:  { name: 'Starter Managed IT', price: '$750–$1,000/month', users: 'up to 5 users', includes: 'monitoring, patching, and helpdesk support' },
+    standard: { name: 'Standard Managed IT', price: '$1,500–$2,500/month', users: '6–15 users', includes: 'full managed IT support plus a quarterly strategy review' },
+    growth:   { name: 'Growth Managed IT', price: '$3,000–$5,000/month', users: '15+ users', includes: 'full managed IT, AI readiness assessment, and automation consulting' },
+  };
+  const tier = tierDetails[recommended_tier] || tierDetails.starter;
 
   try {
-    const host = (process.env.POSTHOG_HOST || 'https://app.posthog.com').replace(/\/$/, '');
-    const projectId = process.env.POSTHOG_PROJECT_ID;
-    const headers = { Authorization: `Bearer ${process.env.POSTHOG_API_KEY}` };
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 800,
+      system: `You are writing a professional email on behalf of Randy at Jack & Jewell Consulting LLC, based in Greenwood, Indiana. Randy has an existing relationship with this client through break-fix IT work and is proposing a shift to a monthly managed services retainer. The email should be warm, direct, and specific — not generic. It should feel like it came from a person who knows the client, not a template. No fluff, no hard sell. Focus on their specific situation and the value of predictable IT costs. Sign it as Randy.`,
+      messages: [{
+        role: 'user',
+        content: `Write a break-fix to retainer conversion email for ${client_name}.
 
-    const hogql = (query) =>
-      axios.post(
-        `${host}/api/projects/${projectId}/query`,
-        { query: { kind: 'HogQLQuery', query } },
-        { headers, timeout: 10000 },
-      ).then(r => r.data?.results?.[0]?.[0] ?? 0);
+Client context: ${client_context || 'Existing break-fix client with no additional context provided.'}
 
-    const periodDays = { '7d': 7, '30d': 30, '90d': 90 }[period] || 30;
-    const prevStart = periodDays * 2;
+Tier to pitch: ${tier.name} — ${tier.price} per month, ${tier.users}, includes ${tier.includes}.
 
-    const [dau, wau, mau, newUsers, prevPeriodUsers] = await Promise.all([
-      hogql(`SELECT uniq(distinct_id) FROM events WHERE timestamp >= now() - interval 1 day`),
-      hogql(`SELECT uniq(distinct_id) FROM events WHERE timestamp >= now() - interval 7 day`),
-      hogql(`SELECT uniq(distinct_id) FROM events WHERE timestamp >= now() - interval 30 day`),
-      hogql(`SELECT count() FROM persons WHERE created_at >= now() - interval ${periodDays} day`),
-      hogql(`SELECT uniq(distinct_id) FROM events WHERE timestamp >= now() - interval ${prevStart} day AND timestamp < now() - interval ${periodDays} day`),
-    ]);
+The email should:
+1. Reference the existing relationship naturally
+2. Name a real pain from break-fix (unpredictable costs, reactive firefighting)
+3. Explain what the ${tier.name} plan covers in plain language
+4. Give a clear price
+5. End with a low-pressure next step (a 15-minute call)
 
-    const growth = prevPeriodUsers > 0
-      ? parseFloat(((mau - prevPeriodUsers) / prevPeriodUsers * 100).toFixed(1))
-      : null;
+Keep it under 200 words. No filler.`,
+      }],
+    });
 
+    const body = response.content[0]?.text || '';
     return {
-      dau: Number(dau),
-      wau: Number(wau),
-      mau: Number(mau),
-      newUsers: Number(newUsers),
-      engagementRatio: mau > 0 ? parseFloat((dau / mau * 100).toFixed(1)) : 0,
-      periodGrowth: growth,
-      period,
-      demo: false,
+      client_name,
+      recommended_tier,
+      tier_name: tier.name,
+      price_range: tier.price,
+      subject: `A different way to think about IT costs, ${client_name}`,
+      body,
     };
   } catch (err) {
-    return { error: err.message, demo: false };
+    return { error: err.message };
   }
 }
 
-// ── Linear (sprint health) ────────────────────────────────────────
+// ── Generate MSP proposal (Claude sub-call) ───────────────────────
 
-const LINEAR_GQL = 'https://api.linear.app/graphql';
-
-const ISSUES_QUERY = `
-  query IssueList($teamId: ID) {
-    issues(
-      filter: {
-        state: { type: { nin: ["completed", "cancelled"] } }
-        ${process.env.LINEAR_TEAM_ID ? 'team: { id: { eq: $teamId } }' : ''}
-      }
-      first: 100
-      orderBy: priority
-    ) {
-      nodes {
-        id title priority dueDate updatedAt
-        state { name type }
-        assignee { displayName }
-        team { name }
-      }
-    }
-    cycles(
-      filter: { isActive: { eq: true } }
-      first: 1
-    ) {
-      nodes {
-        number startsAt endsAt progress
-        completedIssueCountHistory
-        issueCountHistory
-      }
-    }
-  }
-`;
-
-async function getSprintHealth() {
-  if (!process.env.LINEAR_API_KEY) return demoSprintHealth();
+async function generateProposal({ prospect_name, call_notes, recommended_tier, user_count }) {
+  const tierDetails = {
+    starter:  { name: 'Starter Managed IT', price_low: 750, price_high: 1000, users: 'up to 5 users', includes: ['24/7 endpoint monitoring', 'monthly patching and updates', 'helpdesk support (business hours)'] },
+    standard: { name: 'Standard Managed IT', price_low: 1500, price_high: 2500, users: '6–15 users', includes: ['Everything in Starter', 'Unlimited helpdesk support', 'Network monitoring and management', 'Quarterly IT strategy review'] },
+    growth:   { name: 'Growth Managed IT', price_low: 3000, price_high: 5000, users: '15+ users', includes: ['Everything in Standard', 'AI readiness assessment', 'Process automation consulting', 'Monthly executive IT briefing'] },
+  };
+  const tier = tierDetails[recommended_tier] || tierDetails.starter;
 
   try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1500,
+      system: `You are writing a professional managed services proposal on behalf of Randy at Jack & Jewell Consulting LLC, based in Greenwood, Indiana. The proposal should be clear, specific to the prospect's situation, and focused on business outcomes — not technical specs. Write in a confident but approachable tone. This is a small business talking to another small business.`,
+      messages: [{
+        role: 'user',
+        content: `Write a complete MSP proposal for ${prospect_name}.
+
+Discovery call notes: ${call_notes}
+
+Recommended plan: ${tier.name}
+Price range: $${tier.price_low}–$${tier.price_high}/month
+User count: ${user_count || 'not specified'}
+Includes: ${tier.includes.join(', ')}
+
+Structure the proposal as:
+1. Executive summary (2–3 sentences specific to their situation)
+2. The problem we're solving (based on call notes)
+3. Our proposed solution (${tier.name} plan — what it covers)
+4. Investment (monthly price, what's included)
+5. Why Jack & Jewell (2–3 differentiators — local, responsive, no nickel-and-diming)
+6. Next steps (sign and we start within 5 business days)
+
+Write it as a document they could read top-to-bottom. Professional but not stuffy. Under 500 words.`,
+      }],
+    });
+
+    const proposal = response.content[0]?.text || '';
+    return {
+      prospect_name,
+      recommended_tier,
+      tier_name: tier.name,
+      price_range: `$${tier.price_low}–$${tier.price_high}/month`,
+      proposal,
+    };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+// ── Buffer API — LinkedIn scheduling ─────────────────────────────
+
+async function scheduleLinkedInPost({ content, schedule_time }) {
+  if (!process.env.BUFFER_ACCESS_TOKEN || !process.env.BUFFER_PROFILE_ID) {
+    return { error: 'Buffer not configured — set BUFFER_ACCESS_TOKEN and BUFFER_PROFILE_ID in .env' };
+  }
+
+  try {
+    const payload = {
+      text: content,
+      profile_ids: [process.env.BUFFER_PROFILE_ID],
+    };
+    if (schedule_time) {
+      payload.scheduled_at = schedule_time;
+    }
+
     const { data } = await axios.post(
-      LINEAR_GQL,
+      'https://api.bufferapp.com/1/updates/create.json',
+      payload,
       {
-        query: ISSUES_QUERY,
-        variables: { teamId: process.env.LINEAR_TEAM_ID || null },
-      },
-      {
-        headers: { Authorization: process.env.LINEAR_API_KEY },
+        headers: { Authorization: `Bearer ${process.env.BUFFER_ACCESS_TOKEN}` },
         timeout: 10000,
       },
     );
 
-    if (data.errors) return { error: data.errors[0]?.message, demo: false };
-
-    const issues = data.data?.issues?.nodes || [];
-    const cycle  = data.data?.cycles?.nodes?.[0] || null;
-    const now    = new Date();
-
-    const byPriority = { urgent: 0, high: 0, medium: 0, low: 0, none: 0 };
-    const PRIORITY_MAP = { 1: 'urgent', 2: 'high', 3: 'medium', 4: 'low', 0: 'none' };
-    const overdue = [];
-    const unassigned = [];
-
-    for (const issue of issues) {
-      const p = PRIORITY_MAP[issue.priority] || 'none';
-      byPriority[p]++;
-      if (issue.dueDate && new Date(issue.dueDate) < now) {
-        overdue.push({ title: issue.title, priority: p, assignee: issue.assignee?.displayName || null });
-      }
-      if (!issue.assignee && (issue.priority === 1 || issue.priority === 2)) {
-        unassigned.push({ title: issue.title, priority: p });
-      }
-    }
-
-    // Throughput: issues updated to completed in last 7 days (approximation)
-    const recentlyCompleted = issues.filter(i =>
-      i.state.type === 'completed' &&
-      new Date(i.updatedAt) > new Date(now - 7 * 86400000),
-    ).length;
-
     return {
-      totalOpen: issues.length,
-      byPriority,
-      overdue: overdue.slice(0, 5),
-      overdueCount: overdue.length,
-      unassignedUrgent: unassigned.slice(0, 3),
-      activeCycle: cycle ? {
-        number: cycle.number,
-        endsAt: cycle.endsAt,
-        progress: Math.round((cycle.progress || 0) * 100),
-      } : null,
-      recentlyCompletedCount: recentlyCompleted,
-      demo: false,
+      bufferId: data.updates?.[0]?.id || data.id,
+      status: 'scheduled',
+      scheduledAt: schedule_time || 'optimal',
+      preview: content.slice(0, 80) + (content.length > 80 ? '…' : ''),
     };
   } catch (err) {
-    return { error: err.message, demo: false };
+    return { error: err.response?.data?.message || err.message };
   }
 }
 
@@ -607,89 +594,25 @@ async function getSprintHealth() {
 
 function demoRevenue(period) {
   return {
-    mrr: 47820,
-    arr: 573840,
-    activeSubscriptions: 312,
-    newSubscriptions: period === 'today' ? 3 : period === '7d' ? 18 : 47,
-    canceledSubscriptions: period === 'today' ? 1 : period === '7d' ? 4 : 9,
-    churnRate: 2.88,
-    momGrowth: 6.4,
+    mrr: 0,
+    arr: 0,
+    activeSubscriptions: 0,
+    newSubscriptions: 0,
+    canceledSubscriptions: 0,
+    churnRate: 0,
     period,
     currency: 'USD',
     demo: true,
-  };
-}
-
-function demoEngineering() {
-  return {
-    openPRs: 7,
-    prList: [
-      { title: 'feat: new onboarding flow', author: 'sarah', draft: false },
-      { title: 'fix: payment retry logic', author: 'mike', draft: false },
-      { title: 'chore: upgrade dependencies', author: 'bot', draft: true },
-    ],
-    ciStatus: 'failure',
-    lastCIRun: { name: 'CI', status: 'completed', conclusion: 'failure', updatedAt: new Date().toISOString() },
-    failingCICount: 2,
-    commitsLast7d: 34,
-    openIssues: 12,
-    lastCommit: { message: 'fix: handle edge case in checkout flow', author: 'sarah', date: new Date().toISOString() },
-    demo: true,
-  };
-}
-
-function demoCustomers(focus) {
-  return {
-    openConversations: 14,
-    recentConversations: [
-      { subject: 'Export feature not working', author: 'Alice K.', priority: 'high' },
-      { subject: 'Billing question', author: 'Bob M.', priority: 'not_priority' },
-      { subject: 'Integration with Zapier', author: 'Carol R.', priority: 'not_priority' },
-    ],
-    atRiskCustomers: 3,
-    totalContacts: 1840,
-    focus,
-    demo: true,
+    note: 'No Stripe key configured — add STRIPE_SECRET_KEY to .env to see live data',
   };
 }
 
 function demoCompetitors() {
   return {
-    competitors: [
-      { url: 'https://competitor-a.com/pricing', changed: true, lastChecked: new Date().toISOString() },
-      { url: 'https://competitor-b.com/pricing', changed: false, lastChecked: new Date().toISOString() },
-    ],
-    changes: [{ url: 'https://competitor-a.com/pricing', changed: true }],
+    competitors: [],
+    changes: [],
     lastChecked: new Date().toISOString(),
     demo: true,
-  };
-}
-
-function demoProductAnalytics(period) {
-  return {
-    dau: 284,
-    wau: 1120,
-    mau: 3840,
-    newUsers: period === '7d' ? 94 : period === '30d' ? 312 : 780,
-    engagementRatio: 7.4,
-    periodGrowth: 8.2,
-    period,
-    demo: true,
-  };
-}
-
-function demoSprintHealth() {
-  return {
-    totalOpen: 23,
-    byPriority: { urgent: 2, high: 7, medium: 10, low: 4, none: 0 },
-    overdue: [
-      { title: 'Fix payment retry edge case', priority: 'urgent', assignee: 'Sarah' },
-      { title: 'Migrate legacy auth flow', priority: 'high', assignee: null },
-    ],
-    overdueCount: 2,
-    unassignedUrgent: [{ title: 'Security patch for auth', priority: 'urgent' }],
-    activeCycle: { number: 14, endsAt: new Date(Date.now() + 4 * 86400000).toISOString(), progress: 62 },
-    recentlyCompletedCount: 8,
-    demo: true,
+    note: 'No COMPETITOR_URLS configured — add comma-separated URLs to .env to monitor competitors',
   };
 }

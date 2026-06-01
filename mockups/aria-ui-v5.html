@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ARIA — UI v5 (neural map + voice-first)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        rgb(3, 3, 7);
+    --bg-card:   rgba(255,255,255,0.025);
+    --bg-elev:   rgba(255,255,255,0.05);
+    --border:    rgba(255,255,255,0.06);
+    --border-2:  rgba(255,255,255,0.12);
+    --text:      #FFFFFF;
+    --text-dim:  rgba(255,255,255,0.62);
+    --text-mute: rgba(255,255,255,0.38);
+    --accent:    #C5FF4D;
+    --accent-2:  #88AC36;
+    --warn:      #F2B04E;
+    --hot:       #FF6B5C;
+    --info:      #6FA8DC;
+
+    --font-display: "Space Grotesk", system-ui, sans-serif;
+    --font-body:    "Geist", ui-sans-serif, system-ui, sans-serif;
+    --font-mono:    "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  body { min-height: 100vh; position: relative; }
+  .mono { font-family: var(--font-mono); font-feature-settings: 'tnum' 1; }
+  .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.05em; color: var(--text-dim); }
+  .eyebrow::before { content: "◦ "; color: var(--accent); margin-right: 4px; }
+
+  /* ============== TOP BAR ============== */
+  .top {
+    padding: 18px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky; top: 0; z-index: 30;
+    backdrop-filter: blur(14px);
+    background: rgba(3,3,7,0.78);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand-row { display: flex; align-items: center; gap: 16px; }
+  .brand-text { font-family: var(--font-display); font-size: 15px; letter-spacing: -0.01em; font-weight: 600; }
+  .brand-text .div { color: var(--text-mute); font-weight: 400; margin: 0 8px; }
+  .brand-text .sub { color: var(--text-dim); font-weight: 500; }
+  .brand-text .loc { color: var(--text-mute); font-weight: 400; font-size: 13px; margin-left: 8px; }
+
+  /* ============== PILLS (top right) ============== */
+  .pills { display: flex; gap: 8px; align-items: center; }
+  .pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.035);
+    border: 1px solid var(--border-2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text);
+    backdrop-filter: blur(8px);
+    transition: all 0.18s ease;
+  }
+  .pill .label { color: var(--text-mute); letter-spacing: 0.06em; text-transform: uppercase; font-size: 9px; }
+  .pill .val { color: var(--text); font-weight: 500; font-size: 12px; }
+  .pill .delta { font-size: 10px; }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
+
+  .pill.tokens .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: tokpulse 2s ease-in-out infinite; }
+  .pill.tokens .val.live { color: var(--accent); }
+  @keyframes tokpulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .pill.cost .dot { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+  .pill.cost .val { color: var(--warn); }
+
+  .pill.revenue .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .pill.revenue .val { color: var(--text); }
+  .pill.revenue .progress {
+    width: 36px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;
+  }
+  .pill.revenue .progress .fill { height: 100%; background: var(--accent); width: 12%; box-shadow: 0 0 6px var(--accent); }
+
+  .pill.latency .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .pill.latency .val.fast { color: var(--accent); }
+  .pill.latency .val.slow { color: var(--warn); }
+
+  .presence-mark {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+    padding-left: 14px; border-left: 1px solid var(--border);
+  }
+  .presence-mark .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: tokpulse 2.4s ease-in-out infinite; }
+
+  /* ============== PAGE ============== */
+  .page { max-width: 1320px; margin: 0 auto; padding: 24px 32px 140px; }
+
+  /* ============== NEURAL MAP ZONE (the hero) ============== */
+  .neural-zone {
+    position: relative;
+    height: 56vh;
+    min-height: 480px;
+    margin-bottom: 24px;
+    border-radius: 18px;
+    overflow: hidden;
+    background: radial-gradient(ellipse at center, rgba(8,10,20,0.6), rgba(3,3,7,0.4));
+    border: 1px solid var(--border);
+  }
+  #neural-canvas { width: 100%; height: 100%; display: block; }
+
+  .neural-overlay-top {
+    position: absolute; top: 22px; left: 24px;
+    display: flex; gap: 14px; align-items: center;
+    z-index: 5;
+  }
+  .neural-overlay-top .eyebrow { color: var(--text-mute); }
+
+  .neural-overlay-right {
+    position: absolute; top: 22px; right: 24px;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-mute);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    z-index: 5;
+  }
+  .neural-overlay-right .live { color: var(--accent); }
+  .neural-overlay-right .live::before { content: "◦ "; }
+
+  /* Voice transcript / state overlay - bottom of neural zone */
+  .neural-overlay-bottom {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 30px 36px 26px;
+    background: linear-gradient(180deg, transparent, rgba(3,3,7,0.9) 60%);
+    z-index: 5;
+  }
+  .state-row {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 10px;
+  }
+  .state-row .state-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .state-row .state-label::before { content: "◦ "; }
+  .state-row .waveform { display: flex; gap: 3px; align-items: flex-end; height: 16px; }
+  .state-row .waveform .bar {
+    width: 2px; background: var(--accent); border-radius: 1px;
+  }
+  .state-row .waveform .bar:nth-child(1) { height: 4px; animation: wave 0.9s ease-in-out infinite; }
+  .state-row .waveform .bar:nth-child(2) { height: 8px; animation: wave 0.9s ease-in-out infinite 0.1s; }
+  .state-row .waveform .bar:nth-child(3) { height: 12px; animation: wave 0.9s ease-in-out infinite 0.2s; }
+  .state-row .waveform .bar:nth-child(4) { height: 10px; animation: wave 0.9s ease-in-out infinite 0.3s; }
+  .state-row .waveform .bar:nth-child(5) { height: 14px; animation: wave 0.9s ease-in-out infinite 0.15s; }
+  .state-row .waveform .bar:nth-child(6) { height: 6px; animation: wave 0.9s ease-in-out infinite 0.25s; }
+  .state-row .waveform .bar:nth-child(7) { height: 9px; animation: wave 0.9s ease-in-out infinite 0.05s; }
+  @keyframes wave {
+    0%, 100% { transform: scaleY(0.4); }
+    50% { transform: scaleY(1); }
+  }
+
+  .transcript {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 1.4;
+    letter-spacing: -0.015em;
+    color: var(--text);
+    max-width: 920px;
+  }
+  .transcript .dim { color: var(--text-mute); }
+  .transcript .accent { color: var(--accent); }
+
+  /* Active sub-agent indicator inside neural zone */
+  .active-subagent {
+    position: absolute; bottom: 20px; right: 24px;
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(11,11,15,0.7);
+    border: 1px solid var(--border-2);
+    border-radius: 10px;
+    padding: 8px 14px 8px 10px;
+    backdrop-filter: blur(8px);
+    z-index: 5;
+  }
+  .active-subagent .av {
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    border: 1px solid var(--border-2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.06em;
+    background: linear-gradient(135deg, #1a3320, #08160c);
+    color: rgba(255,255,255,0.55);
+  }
+  .active-subagent .text { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+  .active-subagent .text .hl { color: var(--accent); }
+
+  /* ============== SUB-AGENT STRIP ============== */
+  .agent-strip {
+    display: flex; gap: 10px;
+    margin-bottom: 24px;
+    padding: 14px 22px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    backdrop-filter: blur(8px);
+    align-items: center;
+  }
+  .agent-strip .left-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--text-mute); text-transform: uppercase; margin-right: 8px; padding-right: 12px; border-right: 1px solid var(--border); }
+  .agent-strip .left-label::before { content: "◦ "; color: var(--accent); }
+  .agent-strip .tiles { display: flex; gap: 8px; overflow-x: auto; }
+  .agent-tile {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 10px 5px 5px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex: 0 0 auto;
+  }
+  .agent-tile:hover { border-color: var(--accent); }
+  .agent-tile.active { border-color: var(--accent); background: rgba(197,255,77,0.06); }
+  .agent-tile .av {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    border: 1px solid var(--border-2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.6);
+    position: relative;
+  }
+  .agent-tile .av.online::after {
+    content: "";
+    position: absolute; top: -2px; right: -2px;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 5px var(--accent);
+  }
+  .agent-tile .name { font-family: var(--font-display); font-size: 12px; font-weight: 500; }
+  .agent-tile .role { font-family: var(--font-mono); font-size: 9px; color: var(--text-mute); }
+
+  .av-scout { background: linear-gradient(135deg, #1a3320, #08160c); }
+  .av-hunter { background: linear-gradient(135deg, #3a1f10, #170c06); }
+  .av-creative { background: linear-gradient(135deg, #321a3a, #130715); }
+  .av-hermes { background: linear-gradient(135deg, #3a3315, #161305); }
+  .av-beacon { background: linear-gradient(135deg, #15263d, #08111d); }
+  .av-verse { background: linear-gradient(135deg, #2a1735, #100819); }
+  .av-add { background: transparent; border: 1px dashed var(--accent) !important; color: var(--accent); }
+
+  /* ============== DASHBOARD SECONDARY ============== */
+  .secondary-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; }
+  .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 26px;
+    backdrop-filter: blur(8px);
+  }
+  .panel-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 16px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-title { font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+  .panel-title .ann { color: var(--text-mute); font-weight: 400; font-size: 12px; margin-left: 6px; }
+  .panel-aside { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); }
+
+  /* Actions */
+  .action-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 16px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .action-row:last-child { border-bottom: none; }
+  .action-row .marker {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 8px var(--accent);
+  }
+  .action-row .marker.hot { background: var(--hot); box-shadow: 0 0 8px var(--hot); }
+  .action-row .marker.soon { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+  .action-row .marker.future { background: rgba(255,255,255,0.15); box-shadow: none; }
+  .action-row .body .title { font-size: 14px; color: var(--text); margin-bottom: 2px; }
+  .action-row .body .meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); }
+  .action-row .due { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); text-align: right; white-space: nowrap; }
+  .action-row .due.hot { color: var(--hot); }
+  .action-row .due.soon { color: var(--warn); }
+
+  /* Intel */
+  .intel-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .intel-row:last-child { border-bottom: none; }
+  .intel-row .av {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    border: 1px solid var(--border-2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.6);
+  }
+  .intel-row .body .src { font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); letter-spacing: 0.04em; margin-bottom: 2px; }
+  .intel-row .body .src::before { content: "◦ "; color: var(--accent); }
+  .intel-row .body .msg { font-size: 13px; line-height: 1.5; color: var(--text-dim); }
+  .intel-row .body .msg .hl { color: var(--text); }
+  .intel-row .time { font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); white-space: nowrap; }
+
+  /* ============== MIC BAR ============== */
+  .mic-bar {
+    position: fixed; bottom: 22px; left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 64px);
+    max-width: 1256px;
+    background: rgba(13,13,17,0.92);
+    border: 1px solid var(--border-2);
+    border-radius: 16px;
+    padding: 14px 20px;
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto;
+    gap: 14px;
+    align-items: center;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 40px rgba(197,255,77,0.04);
+    z-index: 50;
+  }
+  .mic-button {
+    width: 42px; height: 42px;
+    border-radius: 11px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-2);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim);
+    cursor: pointer;
+    flex: 0 0 42px;
+    transition: all 0.15s ease;
+  }
+  .mic-button:hover { color: var(--accent); border-color: var(--accent); }
+  .mic-button.listening { background: rgba(197,255,77,0.1); color: var(--accent); border-color: var(--accent); box-shadow: 0 0 24px rgba(197,255,77,0.25); }
+  .mic-bar .input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    outline: none;
+  }
+  .mic-bar .input::placeholder { color: var(--text-mute); }
+  .mic-bar .state-pill {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-mute);
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border-2);
+  }
+  .mic-bar .state-pill.listening { color: var(--accent); border-color: rgba(197,255,77,0.4); background: rgba(197,255,77,0.05); }
+  .mic-bar .lat-mini {
+    font-family: var(--font-mono); font-size: 10px; color: var(--text-mute);
+    padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.04);
+  }
+  .mic-bar .lat-mini .v { color: var(--accent); }
+
+  /* ============== FOOTER NOTE ============== */
+  .footer-note { margin-top: 50px; padding-top: 24px; border-top: 1px solid var(--border); font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); text-align: center; line-height: 1.7; }
+  .footer-note .lime { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- ============== TOP BAR ============== -->
+<div class="top">
+  <div class="brand-row">
+    <div class="brand-text">
+      A.R.I.A. <span class="div">/</span>
+      <span class="sub">J&amp;J Consulting</span>
+      <span class="loc">· Greenwood, IN</span>
+    </div>
+  </div>
+  <div class="pills">
+
+    <!-- Token usage pill -->
+    <div class="pill tokens">
+      <span class="dot"></span>
+      <span class="label">tokens</span>
+      <span class="val live mono" id="tokenVal">12.8K</span>
+      <span class="delta mono" style="color:var(--text-mute);">today</span>
+    </div>
+
+    <!-- Cost pill -->
+    <div class="pill cost">
+      <span class="dot"></span>
+      <span class="label">spend</span>
+      <span class="val mono" id="costVal">$0.42</span>
+    </div>
+
+    <!-- Revenue / Bridge pill -->
+    <div class="pill revenue">
+      <span class="dot"></span>
+      <span class="label">MRR / bridge</span>
+      <span class="val mono">$1,950</span>
+      <div class="progress"><div class="fill"></div></div>
+      <span class="delta mono" style="color:var(--text-mute);">12%</span>
+    </div>
+
+    <!-- Latency pill -->
+    <div class="pill latency">
+      <span class="dot"></span>
+      <span class="label">latency</span>
+      <span class="val fast mono" id="latVal">0.74s</span>
+    </div>
+
+    <div class="presence-mark">
+      <span class="dot"></span>idle · "hey ARIA"
+    </div>
+  </div>
+</div>
+
+<!-- ============== PAGE ============== -->
+<div class="page">
+
+  <!-- ============== NEURAL MAP HERO ============== -->
+  <div class="neural-zone">
+    <canvas id="neural-canvas"></canvas>
+
+    <div class="neural-overlay-top">
+      <div class="eyebrow">Neural Map · ARIA core</div>
+    </div>
+
+    <div class="neural-overlay-right">
+      <div class="live">18 nodes · 6 sub-agents</div>
+      <div style="margin-top: 4px;">62 connections active</div>
+      <div style="margin-top: 4px;">drift 0.02°/s</div>
+    </div>
+
+    <div class="active-subagent">
+      <div class="av av-beacon">BCN</div>
+      <div class="text"><span class="hl">Beacon</span> is drafting morning brief</div>
+    </div>
+
+    <div class="neural-overlay-bottom">
+      <div class="state-row">
+        <div class="state-label">ARIA · speaking</div>
+        <div class="waveform">
+          <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+          <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+        </div>
+      </div>
+      <div class="transcript">
+        "You're <span class="accent">$14,550</span> from bridge. Three follow-ups due today — <span class="dim">Pixel Pools is two days overdue</span>. Want me to draft the follow-up, or stay quiet so you can focus on the Performance Clinic prep?"
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== SUB-AGENT STRIP ============== -->
+  <div class="agent-strip">
+    <div class="left-label">Team</div>
+    <div class="tiles">
+      <div class="agent-tile active">
+        <div class="av av-beacon online">BCN</div>
+        <div><div class="name">Beacon</div><div class="role">brief · drafting</div></div>
+      </div>
+      <div class="agent-tile">
+        <div class="av av-scout online">SCT</div>
+        <div><div class="name">Scout</div><div class="role">research</div></div>
+      </div>
+      <div class="agent-tile">
+        <div class="av av-hunter online">HNT</div>
+        <div><div class="name">Hunter</div><div class="role">leads</div></div>
+      </div>
+      <div class="agent-tile">
+        <div class="av av-creative online">CRT</div>
+        <div><div class="name">Creative</div><div class="role">copy</div></div>
+      </div>
+      <div class="agent-tile">
+        <div class="av av-hermes online">HRM</div>
+        <div><div class="name">Hermes</div><div class="role">long-runs</div></div>
+      </div>
+      <div class="agent-tile">
+        <div class="av av-verse online">VRS</div>
+        <div><div class="name">Verse</div><div class="role">linkedin</div></div>
+      </div>
+      <div class="agent-tile">
+        <div class="av av-add">+</div>
+        <div><div class="name" style="color:var(--accent);">Hire</div><div class="role" style="color:var(--accent);">factory</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== SECONDARY DASHBOARD ============== -->
+  <div class="secondary-grid">
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Today's actions <span class="ann">— what ARIA wants you to handle</span></div>
+        <div class="panel-aside">5 items</div>
+      </div>
+
+      <div class="action-row">
+        <div class="marker hot"></div>
+        <div class="body">
+          <div class="title">Pixel Pools — reply to Friday's proposal</div>
+          <div class="meta">$1,800 deal · sent May 29 · no response</div>
+        </div>
+        <div class="due hot">2d overdue</div>
+      </div>
+      <div class="action-row">
+        <div class="marker soon"></div>
+        <div class="body">
+          <div class="title">The Performance Clinic — discovery call prep</div>
+          <div class="meta">Wed Jun 3 · Beacon drafting · review by Tue</div>
+        </div>
+        <div class="due soon">3 days</div>
+      </div>
+      <div class="action-row">
+        <div class="marker"></div>
+        <div class="body">
+          <div class="title">Hedgerow Dental — qualify budget</div>
+          <div class="meta">Atlas scored 78/100 · likely Standard tier</div>
+        </div>
+        <div class="due">Sat Jun 7</div>
+      </div>
+      <div class="action-row">
+        <div class="marker"></div>
+        <div class="body">
+          <div class="title">LinkedIn — Indy SMB IT topic</div>
+          <div class="meta">Creative drafted 3 variations · approve one</div>
+        </div>
+        <div class="due">today</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Intel feed</div>
+        <div class="panel-aside">live</div>
+      </div>
+
+      <div class="intel-row">
+        <div class="av av-scout">SCT</div>
+        <div class="body">
+          <div class="src">Scout · competitor watch</div>
+          <div class="msg"><span class="hl">Wayfinder Tech</span> dropped Starter tier to $399/mo (was $750). Possible price-war signal.</div>
+        </div>
+        <div class="time">11 min</div>
+      </div>
+      <div class="intel-row">
+        <div class="av av-beacon">BCN</div>
+        <div class="body">
+          <div class="src">Beacon · brief ready</div>
+          <div class="msg"><span class="hl">$1,950 MRR, 3 actions due.</span> Read out loud?</div>
+        </div>
+        <div class="time">23 min</div>
+      </div>
+      <div class="intel-row">
+        <div class="av av-hunter">HNT</div>
+        <div class="body">
+          <div class="src">Hunter · new lead</div>
+          <div class="msg"><span class="hl">Bridgepoint Dental</span> (Carmel, 18 users) hired new ops director — 3-mo window typical.</div>
+        </div>
+        <div class="time">2h</div>
+      </div>
+      <div class="intel-row">
+        <div class="av av-verse">VRS</div>
+        <div class="body">
+          <div class="src">Verse · LinkedIn</div>
+          <div class="msg">2 comment replies drafted. <span class="hl">No edits suggested.</span></div>
+        </div>
+        <div class="time">4h</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer-note">
+    v5 brief: voice-first localized UI <span class="lime">·</span> Three.js neural map (18 nodes, ARIA at center, sub-agent rings) <span class="lime">·</span> live token + spend + revenue + latency pills <span class="lime">·</span> &lt; 1s response target tracked top-right <span class="lime">·</span> Hello Trillion Gallery DNA: Space Grotesk / Geist / rgb(3,3,7) / ◦ eyebrows
+  </div>
+
+</div>
+
+<!-- ============== MIC BAR ============== -->
+<div class="mic-bar">
+  <div class="mic-button" id="micBtn" onclick="toggleListening()">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="2" width="6" height="12" rx="3"/>
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+      <line x1="12" y1="19" x2="12" y2="23"/>
+    </svg>
+  </div>
+  <input class="input" placeholder='Type a message or say "hey ARIA" to start a conversation...' />
+  <div class="lat-mini">last reply <span class="v mono" id="latMini">0.74s</span></div>
+  <div class="state-pill" id="statePill">Idle</div>
+</div>
+
+<!-- ============== THREE.JS NEURAL MAP ============== -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ============== SCENE SETUP ==============
+const canvas = document.getElementById('neural-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+camera.position.set(0, 0.4, 6.5);
+camera.lookAt(0, 0, 0);
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+// ============== ARIA CENTER NODE ==============
+const ariaCore = new THREE.Mesh(
+  new THREE.SphereGeometry(0.13, 32, 32),
+  new THREE.MeshBasicMaterial({ color: 0xC5FF4D })
+);
+scene.add(ariaCore);
+
+// Glow halo around ARIA core
+const haloGeo = new THREE.SphereGeometry(0.22, 32, 32);
+const haloMat = new THREE.MeshBasicMaterial({ color: 0xC5FF4D, transparent: true, opacity: 0.18 });
+const halo = new THREE.Mesh(haloGeo, haloMat);
+scene.add(halo);
+
+// Outer ambient halo
+const halo2 = new THREE.Mesh(
+  new THREE.SphereGeometry(0.4, 32, 32),
+  new THREE.MeshBasicMaterial({ color: 0xC5FF4D, transparent: true, opacity: 0.06 })
+);
+scene.add(halo2);
+
+// ============== SUB-AGENT NODES (close orbit) ==============
+const subAgents = [
+  { name: 'Scout',    color: 0x6BD08F },
+  { name: 'Hunter',   color: 0xE08B5C },
+  { name: 'Creative', color: 0xB97FE5 },
+  { name: 'Hermes',   color: 0xE3CC68 },
+  { name: 'Beacon',   color: 0x6FA8DC, pulsing: true }, // active right now
+  { name: 'Verse',    color: 0xC078E5 },
+];
+
+const subAgentNodes = [];
+const subRadius = 1.5;
+subAgents.forEach((sa, i) => {
+  const angle = (i / subAgents.length) * Math.PI * 2;
+  const yJitter = (Math.sin(i * 1.7) * 0.4);
+  const node = new THREE.Mesh(
+    new THREE.SphereGeometry(0.07, 24, 24),
+    new THREE.MeshBasicMaterial({ color: sa.color })
+  );
+  node.position.set(
+    Math.cos(angle) * subRadius,
+    yJitter,
+    Math.sin(angle) * subRadius
+  );
+  scene.add(node);
+
+  // Soft glow for each sub-agent
+  const sub_halo = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 16, 16),
+    new THREE.MeshBasicMaterial({ color: sa.color, transparent: true, opacity: 0.2 })
+  );
+  sub_halo.position.copy(node.position);
+  scene.add(sub_halo);
+
+  subAgentNodes.push({ node, halo: sub_halo, data: sa, baseAngle: angle, yJitter });
+
+  // Edge to ARIA core
+  const lineGeom = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0, 0),
+    node.position.clone()
+  ]);
+  const lineMat = new THREE.LineBasicMaterial({
+    color: sa.color,
+    transparent: true,
+    opacity: sa.pulsing ? 0.5 : 0.22
+  });
+  const line = new THREE.Line(lineGeom, lineMat);
+  scene.add(line);
+});
+
+// ============== OUTER CONCEPT NODES (memory / topics, further out) ==============
+const conceptNodes = [];
+const NUM_CONCEPTS = 22;
+for (let i = 0; i < NUM_CONCEPTS; i++) {
+  const theta = Math.acos(2 * Math.random() - 1);
+  const phi = 2 * Math.PI * Math.random();
+  const r = 2.6 + Math.random() * 0.5;
+  const x = r * Math.sin(theta) * Math.cos(phi);
+  const y = r * Math.sin(theta) * Math.sin(phi) * 0.5; // flatten Y a bit
+  const z = r * Math.cos(theta);
+
+  const node = new THREE.Mesh(
+    new THREE.SphereGeometry(0.035, 12, 12),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 })
+  );
+  node.position.set(x, y, z);
+  scene.add(node);
+  conceptNodes.push(node);
+}
+
+// ============== EDGES BETWEEN CONCEPT NODES ==============
+const conceptLines = [];
+for (let i = 0; i < conceptNodes.length; i++) {
+  for (let j = i + 1; j < conceptNodes.length; j++) {
+    const da = conceptNodes[i].position;
+    const db = conceptNodes[j].position;
+    const dist = da.distanceTo(db);
+    if (dist < 1.4 && Math.random() < 0.45) {
+      const geom = new THREE.BufferGeometry().setFromPoints([da.clone(), db.clone()]);
+      const mat = new THREE.LineBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.06 + (1.4 - dist) * 0.08
+      });
+      const line = new THREE.Line(geom, mat);
+      scene.add(line);
+      conceptLines.push(line);
+    }
+  }
+}
+
+// Edges from some sub-agents to nearby concepts
+subAgentNodes.forEach((sa) => {
+  const nearby = conceptNodes
+    .map(c => ({ c, d: c.position.distanceTo(sa.node.position) }))
+    .sort((a, b) => a.d - b.d)
+    .slice(0, 3);
+  nearby.forEach(({ c }) => {
+    const geom = new THREE.BufferGeometry().setFromPoints([
+      sa.node.position.clone(),
+      c.position.clone()
+    ]);
+    const mat = new THREE.LineBasicMaterial({
+      color: sa.data.color,
+      transparent: true,
+      opacity: 0.1
+    });
+    const line = new THREE.Line(geom, mat);
+    scene.add(line);
+  });
+});
+
+// ============== ANIMATION LOOP ==============
+const clock = new THREE.Clock();
+let activePulse = 0;
+
+function animate() {
+  const t = clock.getElapsedTime();
+
+  // Slow rotation of whole scene
+  scene.rotation.y = t * 0.08;
+  scene.rotation.x = Math.sin(t * 0.15) * 0.08;
+
+  // ARIA core pulse
+  const p = 1 + Math.sin(t * 1.5) * 0.08;
+  ariaCore.scale.setScalar(p);
+  halo.scale.setScalar(1 + Math.sin(t * 1.2) * 0.12);
+  halo2.scale.setScalar(1 + Math.sin(t * 0.8 + 1) * 0.18);
+
+  // Sub-agent pulses (Beacon - the active one - pulses more)
+  subAgentNodes.forEach((sa, i) => {
+    if (sa.data.pulsing) {
+      const sp = 1 + Math.sin(t * 4) * 0.3;
+      sa.node.scale.setScalar(sp);
+      sa.halo.scale.setScalar(1 + Math.sin(t * 4) * 0.5);
+      sa.halo.material.opacity = 0.3 + Math.sin(t * 4) * 0.2;
+    } else {
+      const sp = 1 + Math.sin(t * 0.8 + i) * 0.06;
+      sa.node.scale.setScalar(sp);
+    }
+  });
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+
+resize();
+animate();
+
+// Resize on neural-zone resize (window resize)
+new ResizeObserver(resize).observe(canvas);
+
+// ============== LIVE PILL UPDATES (simulated) ==============
+let tokens = 12842;
+let cost = 0.421;
+let lat = 0.74;
+setInterval(() => {
+  // Token usage drift
+  const inc = Math.floor(Math.random() * 280);
+  tokens += inc;
+  cost += inc * 0.000015;
+  const k = (tokens / 1000).toFixed(1);
+  document.getElementById('tokenVal').textContent = k + 'K';
+  document.getElementById('costVal').textContent = '$' + cost.toFixed(2);
+
+  // Latency drift
+  lat = 0.5 + Math.random() * 0.6;
+  const latEl = document.getElementById('latVal');
+  const latMini = document.getElementById('latMini');
+  latEl.textContent = lat.toFixed(2) + 's';
+  latMini.textContent = lat.toFixed(2) + 's';
+  if (lat < 1.0) {
+    latEl.classList.add('fast'); latEl.classList.remove('slow');
+  } else {
+    latEl.classList.add('slow'); latEl.classList.remove('fast');
+  }
+}, 2400);
+
+// ============== MIC BUTTON ==============
+let listening = false;
+window.toggleListening = () => {
+  listening = !listening;
+  const btn = document.getElementById('micBtn');
+  const pill = document.getElementById('statePill');
+  if (listening) {
+    btn.classList.add('listening');
+    pill.classList.add('listening');
+    pill.textContent = 'Listening';
+  } else {
+    btn.classList.remove('listening');
+    pill.classList.remove('listening');
+    pill.textContent = 'Idle';
+  }
+};
+</script>
+
+</body>
+</html>

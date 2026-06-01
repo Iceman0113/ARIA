@@ -1,0 +1,1855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ARIA — UI v9 (Data Bloom)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        rgb(3, 3, 7);
+    --bg-card:   rgba(255,255,255,0.025);
+    --bg-elev:   rgba(255,255,255,0.05);
+    --border:    rgba(255,255,255,0.06);
+    --border-2:  rgba(255,255,255,0.12);
+    --text:      #FFFFFF;
+    --text-dim:  rgba(255,255,255,0.62);
+    --text-mute: rgba(255,255,255,0.38);
+    --accent:    #C5FF4D;
+    --warn:      #F2B04E;
+    --hot:       #FF6B5C;
+    --info:      #6FA8DC;
+
+    --font-display: "Space Grotesk", system-ui, sans-serif;
+    --font-body:    "Geist", ui-sans-serif, system-ui, sans-serif;
+    --font-mono:    "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; overflow: hidden; height: 100vh; }
+  .mono { font-family: var(--font-mono); font-feature-settings: 'tnum' 1; }
+  .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.05em; color: var(--text-dim); }
+  .eyebrow::before { content: "◦ "; color: var(--accent); margin-right: 4px; }
+
+  /* ============== TOP BAR ============== */
+  .top {
+    padding: 16px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 30;
+    backdrop-filter: blur(14px);
+    background: rgba(3,3,7,0.7);
+    border-bottom: 1px solid var(--border);
+    height: 64px;
+  }
+  .brand-text { font-family: var(--font-display); font-size: 15px; letter-spacing: -0.01em; font-weight: 600; }
+  .brand-text .div { color: var(--text-mute); font-weight: 400; margin: 0 8px; }
+  .brand-text .sub { color: var(--text-dim); font-weight: 500; }
+  .brand-text .loc { color: var(--text-mute); font-weight: 400; font-size: 13px; margin-left: 8px; }
+
+  /* ============== PILLS ============== */
+  .pills { display: flex; gap: 8px; align-items: center; }
+  .pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 13px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.035);
+    border: 1px solid var(--border-2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text);
+    backdrop-filter: blur(8px);
+    transition: all 0.18s ease;
+  }
+  .pill .label { color: var(--text-mute); letter-spacing: 0.06em; text-transform: uppercase; font-size: 9px; }
+  .pill .val { color: var(--text); font-weight: 500; font-size: 12px; }
+  .pill .delta { font-size: 10px; }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
+  .pill.tokens .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: tokpulse 2s ease-in-out infinite; }
+  .pill.tokens .val.live { color: var(--accent); }
+  @keyframes tokpulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .pill.cost .dot { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+  .pill.cost .val { color: var(--warn); }
+  .pill.revenue .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .pill.revenue .progress { width: 30px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+  .pill.revenue .progress .fill { height: 100%; background: var(--accent); width: 12%; box-shadow: 0 0 6px var(--accent); }
+  .pill.latency .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .pill.latency .val.fast { color: var(--accent); }
+  .pill.latency .val.slow { color: var(--warn); }
+  .presence-mark {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+    padding-left: 14px; border-left: 1px solid var(--border);
+  }
+  .presence-mark .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: tokpulse 2.4s ease-in-out infinite; }
+
+  /* ============== STAGE — FULL SCREEN ============== */
+  .stage {
+    position: fixed;
+    top: 64px;
+    left: 0;
+    right: 0;
+    bottom: 84px;
+    overflow: hidden;
+    background: #000;
+  }
+  #neural-canvas { width: 100%; height: 100%; display: block; }
+
+  /* ============== CSS2D LABEL LAYER ============== */
+  #label-layer {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 4;
+    overflow: hidden;
+  }
+  .neural-label {
+    font-family: 'Geist', -apple-system, sans-serif;
+    font-size: 11px; font-weight: 500;
+    color: rgba(255,255,255,0.78);
+    pointer-events: none; user-select: none;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.95);
+    white-space: nowrap;
+    transform: translate(14px, -10px);
+  }
+  .neural-label.hub {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px; font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    text-shadow: 0 0 16px rgba(197,255,77,0.65), 0 1px 4px rgba(0,0,0,0.95);
+    transform: translate(-50%, -50%);
+    padding-left: 0;
+  }
+  .neural-label.category {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.92);
+    transform: translate(14px, -8px);
+  }
+  .neural-label .tick {
+    display: inline-block;
+    width: 16px; height: 1px;
+    background: currentColor;
+    opacity: 0.55;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  .neural-label.hub .tick { display: none; }
+
+  /* Hover tooltip */
+  #neural-tooltip {
+    display: none;
+    position: absolute;
+    background: rgba(8,8,12,0.92);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 12px;
+    padding: 14px 18px;
+    pointer-events: none;
+    z-index: 100;
+    backdrop-filter: blur(14px);
+    min-width: 240px;
+    max-width: 340px;
+    box-shadow: 0 18px 60px rgba(0,0,0,0.7), 0 0 30px rgba(197,255,77,0.04);
+  }
+  #neural-tooltip .label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px; font-weight: 600;
+    letter-spacing: -0.005em;
+    margin-bottom: 8px;
+  }
+  #neural-tooltip .detail {
+    font-family: 'Geist', sans-serif;
+    font-size: 12.5px;
+    color: rgba(255,255,255,0.72);
+    line-height: 1.55;
+  }
+  #neural-tooltip .freshness {
+    font-family: 'Geist Mono', monospace;
+    font-size: 9px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+  }
+  #neural-tooltip .freshness .lime { color: var(--accent); }
+  #neural-tooltip .bar {
+    margin-top: 8px;
+    height: 2px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  #neural-tooltip .bar .fill { height: 100%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+  /* ============== ARIA STATE OVERLAY (bottom of stage) ============== */
+  .aria-overlay {
+    position: absolute;
+    left: 50%; bottom: 32px;
+    transform: translateX(-50%);
+    max-width: 760px;
+    width: calc(100% - 80px);
+    text-align: center;
+    z-index: 5;
+    pointer-events: none;
+  }
+  .aria-state-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 12px; margin-bottom: 14px;
+  }
+  .aria-state-label {
+    font-family: var(--font-mono);
+    font-size: 11px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--accent);
+  }
+  .aria-state-label::before { content: "◦ "; }
+  .waveform { display: flex; gap: 3px; align-items: flex-end; height: 18px; }
+  .waveform .bar { width: 2px; background: var(--accent); border-radius: 1px; }
+  .waveform .bar:nth-child(1) { height: 4px; animation: wave 0.9s ease-in-out infinite; }
+  .waveform .bar:nth-child(2) { height: 10px; animation: wave 0.9s ease-in-out infinite 0.1s; }
+  .waveform .bar:nth-child(3) { height: 14px; animation: wave 0.9s ease-in-out infinite 0.2s; }
+  .waveform .bar:nth-child(4) { height: 8px; animation: wave 0.9s ease-in-out infinite 0.3s; }
+  .waveform .bar:nth-child(5) { height: 16px; animation: wave 0.9s ease-in-out infinite 0.15s; }
+  .waveform .bar:nth-child(6) { height: 6px; animation: wave 0.9s ease-in-out infinite 0.25s; }
+  .waveform .bar:nth-child(7) { height: 12px; animation: wave 0.9s ease-in-out infinite 0.05s; }
+  @keyframes wave { 0%, 100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
+  .transcript {
+    font-family: var(--font-display);
+    font-size: 22px; font-weight: 500; line-height: 1.45;
+    letter-spacing: -0.015em;
+    color: var(--text);
+    text-shadow: 0 4px 24px rgba(3,3,7,0.95);
+  }
+  .transcript .dim { color: var(--text-mute); }
+  .transcript .accent { color: var(--accent); }
+
+  /* Side stat overlay (top right of stage) */
+  .stage-stats {
+    position: absolute; top: 22px; right: 28px;
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--text-mute); letter-spacing: 0.06em; text-transform: uppercase;
+    text-align: right;
+    z-index: 5;
+  }
+  .stage-stats .live { color: var(--accent); }
+  .stage-stats .live::before { content: "◦ "; }
+
+  /* Eyebrow label on top left of stage */
+  .stage-eyebrow {
+    position: absolute; top: 22px; left: 28px;
+    z-index: 5;
+  }
+  .stage-eyebrow .sub {
+    margin-top: 6px;
+    font-family: var(--font-mono); font-size: 9px;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 0.22em; text-transform: uppercase;
+    max-width: 220px; line-height: 1.6;
+  }
+
+  /* Vignette overlay over the canvas */
+  .vignette {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    background:
+      radial-gradient(ellipse at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%),
+      linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0) 18%, rgba(0,0,0,0) 70%, rgba(0,0,0,0.35) 100%);
+  }
+
+  /* ============== MIC BAR ============== */
+  .mic-bar {
+    position: fixed; bottom: 18px; left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 56px);
+    max-width: 1280px;
+    background: rgba(13,13,17,0.92);
+    border: 1px solid var(--border-2);
+    border-radius: 16px;
+    padding: 12px 18px;
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto auto;
+    gap: 12px;
+    align-items: center;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 40px rgba(197,255,77,0.04);
+    z-index: 50;
+  }
+  .mic-button {
+    width: 40px; height: 40px;
+    border-radius: 11px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-2);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim);
+    cursor: pointer;
+    flex: 0 0 40px;
+    transition: all 0.15s ease;
+  }
+  .mic-button:hover { color: var(--accent); border-color: var(--accent); }
+  .mic-button.listening { background: rgba(197,255,77,0.1); color: var(--accent); border-color: var(--accent); box-shadow: 0 0 24px rgba(197,255,77,0.25); }
+  .mic-bar .input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    outline: none;
+  }
+  .mic-bar .input::placeholder { color: var(--text-mute); }
+  .mic-bar .lat-mini {
+    font-family: var(--font-mono); font-size: 10px; color: var(--text-mute);
+    padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.04);
+  }
+  .mic-bar .lat-mini .v { color: var(--accent); }
+  .mic-bar .state-pill {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-mute);
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border-2);
+  }
+  .mic-bar .state-pill.listening { color: var(--accent); border-color: rgba(197,255,77,0.4); background: rgba(197,255,77,0.05); }
+  .dash-toggle {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em;
+    color: var(--text-dim);
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border-2);
+    background: rgba(255,255,255,0.03);
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    text-transform: uppercase;
+    transition: all 0.15s ease;
+  }
+  .dash-toggle:hover { color: var(--accent); border-color: var(--accent); }
+  .dash-toggle .arrow { font-size: 14px; transition: transform 0.2s ease; }
+  .dash-toggle.on { color: var(--accent); border-color: var(--accent); background: rgba(197,255,77,0.06); }
+  .dash-toggle.on .arrow { transform: rotate(180deg); }
+
+  /* ============== DASHBOARD DRAWER ============== */
+  .drawer {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: 60vh;
+    background: rgba(8,8,12,0.96);
+    border-top: 1px solid var(--border-2);
+    backdrop-filter: blur(20px);
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0.34, 1);
+    z-index: 40;
+    overflow-y: auto;
+    padding-bottom: 90px;
+  }
+  .drawer.on { transform: translateY(0); }
+  .drawer .drawer-handle {
+    position: sticky; top: 0; z-index: 2;
+    text-align: center;
+    padding: 14px 0 8px;
+    background: rgba(8,8,12,0.96);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+  }
+  .drawer .drawer-handle .handle-bar {
+    width: 48px; height: 4px;
+    background: var(--border-2);
+    border-radius: 2px;
+    margin: 0 auto 8px;
+  }
+  .drawer .drawer-handle .label {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.16em;
+    color: var(--text-mute); text-transform: uppercase;
+  }
+  .drawer .drawer-handle .label::before { content: "◦ "; color: var(--accent); }
+
+  .drawer-body { max-width: 1280px; margin: 0 auto; padding: 24px 32px; }
+  .drawer-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; }
+
+  .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 26px;
+    backdrop-filter: blur(8px);
+  }
+  .panel-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 16px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-title { font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+  .panel-title .ann { color: var(--text-mute); font-weight: 400; font-size: 12px; margin-left: 6px; }
+  .panel-aside { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); }
+
+  .action-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 14px; align-items: center;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .action-row:last-child { border-bottom: none; }
+  .action-row .marker {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 8px var(--accent);
+  }
+  .action-row .marker.hot { background: var(--hot); box-shadow: 0 0 8px var(--hot); }
+  .action-row .marker.soon { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+  .action-row .marker.future { background: rgba(255,255,255,0.15); box-shadow: none; }
+  .action-row .body .title { font-size: 14px; color: var(--text); margin-bottom: 2px; }
+  .action-row .body .meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); }
+  .action-row .due { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); text-align: right; white-space: nowrap; }
+  .action-row .due.hot { color: var(--hot); }
+  .action-row .due.soon { color: var(--warn); }
+
+  .intel-row {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .intel-row:last-child { border-bottom: none; }
+  .intel-row .av {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    border: 1px solid var(--border-2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 8px;
+    color: rgba(255,255,255,0.6);
+  }
+  .intel-row .body .src { font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); margin-bottom: 2px; }
+  .intel-row .body .src::before { content: "◦ "; color: var(--accent); }
+  .intel-row .body .msg { font-size: 13px; line-height: 1.5; color: var(--text-dim); }
+  .intel-row .body .msg .hl { color: var(--text); }
+  .intel-row .time { font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); white-space: nowrap; }
+
+  .drawer-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+  .drawer-kpi { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .drawer-kpi .label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; color: var(--text-mute); text-transform: uppercase; margin-bottom: 8px; }
+  .drawer-kpi .label::before { content: "◦ "; color: var(--accent); }
+  .drawer-kpi .val { font-family: var(--font-display); font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+  .drawer-kpi .val.lime { color: var(--accent); }
+  .drawer-kpi .delta { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+
+  .drawer-backdrop {
+    position: fixed; inset: 0 0 84px 0;
+    background: rgba(3,3,7,0.5);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 35;
+  }
+  .drawer-backdrop.on { opacity: 1; pointer-events: auto; }
+</style>
+</head>
+<body>
+
+<!-- ============== TOP BAR ============== -->
+<div class="top">
+  <div class="brand-text">
+    A.R.I.A. <span class="div">/</span>
+    <span class="sub">Jack &amp; Jewell Consulting</span>
+    <span class="loc">· Greenwood, IN</span>
+  </div>
+  <div class="pills">
+    <div class="pill tokens"><span class="dot"></span><span class="label">tokens</span><span class="val live mono" id="tokenVal">12.8K</span><span class="delta mono" style="color:var(--text-mute);">today</span></div>
+    <div class="pill cost"><span class="dot"></span><span class="label">spend</span><span class="val mono" id="costVal">$0.42</span></div>
+    <div class="pill revenue"><span class="dot"></span><span class="label">MRR</span><span class="val mono">$1,950</span><div class="progress"><div class="fill"></div></div><span class="delta mono" style="color:var(--text-mute);">12%</span></div>
+    <div class="pill latency"><span class="dot"></span><span class="label">latency</span><span class="val fast mono" id="latVal">0.74s</span></div>
+    <div class="presence-mark"><span class="dot"></span>idle · "hey ARIA"</div>
+  </div>
+</div>
+
+<!-- ============== STAGE ============== -->
+<div class="stage" id="stage">
+  <canvas id="neural-canvas"></canvas>
+
+  <div class="stage-eyebrow">
+    <div class="eyebrow">Data Bloom · ARIA core <span style="color: var(--text-mute);">v9.1</span></div>
+    <div class="sub">Active sub-agents detach + orbit · leash<br/>pulses · return on completion</div>
+  </div>
+
+  <div class="stage-stats">
+    <div class="live">6 sub-agents · 22 memory nodes</div>
+    <div style="margin-top: 4px;">drift 0.08°/s · bloom Φ 0.62</div>
+  </div>
+
+  <div id="label-layer"></div>
+
+  <div id="neural-tooltip">
+    <div class="label"></div>
+    <div class="detail"></div>
+    <div class="freshness"></div>
+    <div class="bar"><div class="fill"></div></div>
+  </div>
+
+  <div class="vignette"></div>
+
+  <div class="aria-overlay">
+    <div class="aria-state-row">
+      <div class="aria-state-label">ARIA · speaking</div>
+      <div class="waveform">
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      </div>
+    </div>
+    <div class="transcript">
+      "You're <span class="accent">$14,550</span> from bridge. Pixel Pools is <span class="dim">two days overdue</span> on the proposal reply — want me to draft the follow-up?"
+    </div>
+  </div>
+</div>
+
+<!-- ============== MIC BAR ============== -->
+<div class="mic-bar">
+  <div class="mic-button" id="micBtn" onclick="toggleListening()">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="2" width="6" height="12" rx="3"/>
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+      <line x1="12" y1="19" x2="12" y2="23"/>
+    </svg>
+  </div>
+  <input class="input" placeholder='Type a message or say "hey ARIA"...' />
+  <div class="lat-mini">last <span class="v mono" id="latMini">0.74s</span></div>
+  <div class="state-pill" id="statePill">Idle</div>
+  <div class="dash-toggle" id="dashToggle" onclick="toggleDrawer()">
+    <span>Dashboard</span><span class="arrow">▴</span>
+  </div>
+</div>
+
+<!-- ============== DASHBOARD DRAWER ============== -->
+<div class="drawer-backdrop" id="drawerBackdrop" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-handle" onclick="closeDrawer()">
+    <div class="handle-bar"></div>
+    <div class="label">Dashboard · tap or press ESC to close</div>
+  </div>
+  <div class="drawer-body">
+
+    <div class="drawer-kpis">
+      <div class="drawer-kpi">
+        <div class="label">MRR vs bridge</div>
+        <div class="val lime mono">$1,950</div>
+        <div class="delta">/ $16,500 · 12% · <span style="color:var(--accent);">+$350 wk</span></div>
+      </div>
+      <div class="drawer-kpi">
+        <div class="label">Pipeline open</div>
+        <div class="val mono">$8,400</div>
+        <div class="delta">4 active · 1 hot</div>
+      </div>
+      <div class="drawer-kpi">
+        <div class="label">Follow-ups</div>
+        <div class="val mono">3 <span style="color:var(--hot); font-size:14px;">2 OVR</span></div>
+        <div class="delta">today · this week</div>
+      </div>
+      <div class="drawer-kpi">
+        <div class="label">Today's spend</div>
+        <div class="val mono" style="color:var(--warn);">$0.42</div>
+        <div class="delta">12.8K tokens · avg 0.74s</div>
+      </div>
+    </div>
+
+    <div class="drawer-grid">
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Today's actions <span class="ann">— what ARIA wants you to handle</span></div>
+          <div class="panel-aside">5 items</div>
+        </div>
+
+        <div class="action-row">
+          <div class="marker hot"></div>
+          <div class="body"><div class="title">Pixel Pools — reply to Friday's proposal</div><div class="meta">$1,800 deal · sent May 29 · no response</div></div>
+          <div class="due hot">2d overdue</div>
+        </div>
+        <div class="action-row">
+          <div class="marker soon"></div>
+          <div class="body"><div class="title">The Performance Clinic — discovery call prep</div><div class="meta">Wed Jun 3 · Beacon drafting · review by Tue</div></div>
+          <div class="due soon">3 days</div>
+        </div>
+        <div class="action-row">
+          <div class="marker"></div>
+          <div class="body"><div class="title">Hedgerow Dental — qualify budget</div><div class="meta">Atlas scored 78/100 · Standard tier likely</div></div>
+          <div class="due">Sat Jun 7</div>
+        </div>
+        <div class="action-row">
+          <div class="marker"></div>
+          <div class="body"><div class="title">LinkedIn — Indy SMB IT topic</div><div class="meta">Creative drafted 3 variations · approve one</div></div>
+          <div class="due">today</div>
+        </div>
+        <div class="action-row">
+          <div class="marker future"></div>
+          <div class="body"><div class="title">Greenwood Church — retainer renewal</div><div class="meta">$900/mo · 22 days out</div></div>
+          <div class="due">Jun 22</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Intel feed</div>
+          <div class="panel-aside">live</div>
+        </div>
+
+        <div class="intel-row">
+          <div class="av av-scout">SCT</div>
+          <div class="body"><div class="src">Scout · competitor watch</div><div class="msg"><span class="hl">Wayfinder Tech</span> dropped Starter tier to $399/mo. Possible price-war signal.</div></div>
+          <div class="time">11 min</div>
+        </div>
+        <div class="intel-row">
+          <div class="av av-beacon">BCN</div>
+          <div class="body"><div class="src">Beacon · brief ready</div><div class="msg"><span class="hl">$1,950 MRR, 3 actions due.</span> Read out loud?</div></div>
+          <div class="time">23 min</div>
+        </div>
+        <div class="intel-row">
+          <div class="av av-hunter">HNT</div>
+          <div class="body"><div class="src">Hunter · new lead</div><div class="msg"><span class="hl">Bridgepoint Dental</span> (Carmel, 18 users) hired new ops director.</div></div>
+          <div class="time">2h</div>
+        </div>
+        <div class="intel-row">
+          <div class="av av-verse">VRS</div>
+          <div class="body"><div class="src">Verse · LinkedIn</div><div class="msg">2 comment replies drafted. <span class="hl">No edits suggested.</span></div></div>
+          <div class="time">4h</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- ============== THREE.JS — DATA BLOOM ============== -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.174.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.174.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+/* ============================================================
+   DATA — same schema as v8
+   ============================================================ */
+const DATA = {
+  nodes: [
+    { id: 'aria', type: 'hub', label: 'ARIA', color: '#C5FF4D', freshness: 1.0, detail: 'Adaptive Reasoning & Intelligent Automation — voice-first cofounder for Jack & Jewell Consulting.' },
+
+    { id: 'scout',    type: 'category', label: 'Scout',    color: '#9FE89A', freshness: 0.92, detail: 'Web intelligence. Targeted searches, page fetches, cross-referenced briefings.' },
+    { id: 'hunter',   type: 'category', label: 'Hunter',   color: '#E8B36A', freshness: 0.84, detail: 'B2B lead generation. Qualifies SMB prospects by funding, tech hiring, modernization.' },
+    { id: 'creative', type: 'category', label: 'Creative', color: '#C7A4F0', freshness: 0.88, detail: 'B2B ad and social copywriter. LinkedIn/Meta/Google/email variations.' },
+    { id: 'hermes',   type: 'category', label: 'Hermes',   color: '#F0D67A', freshness: 0.72, detail: 'Long-running, memory-backed tasks via Nous Research Hermes CLI.' },
+    { id: 'beacon',   type: 'category', label: 'Beacon',   color: '#8BB8E8', freshness: 1.00, detail: 'Drafts the 8 AM Morning Brief — actively running right now.' },
+    { id: 'verse',    type: 'category', label: 'Verse',    color: '#D896E8', freshness: 0.91, detail: 'LinkedIn comment reply drafter in Randy\'s voice. Drafts only.' },
+
+    { id: 'wayfinder',   parent: 'scout',    type: 'leaf', label: 'Wayfinder Tech', freshness: 0.95, detail: 'Local MSP competitor — dropped Starter tier to $399/mo from $750. Possible price-war signal.' },
+    { id: 'indy-mkt',    parent: 'scout',    type: 'leaf', label: 'Indy MSP market', freshness: 0.70, detail: 'Greenwood / South Indianapolis competitive landscape. 12 competitors tracked.' },
+    { id: 'msp-pricing', parent: 'scout',    type: 'leaf', label: 'Pricing surveillance', freshness: 0.58, detail: 'Pricing pages monitored across all watched competitors. Snapshots cached.' },
+    { id: 'community',   parent: 'scout',    type: 'leaf', label: 'Indy SMB community', freshness: 0.45, detail: 'Chambers of commerce, BNI groups, local IT forums.' },
+
+    { id: 'bridgepoint', parent: 'hunter',   type: 'leaf', label: 'Bridgepoint Dental', freshness: 0.95, detail: 'Carmel, 18 users. New ops director hired — 3-month MSP procurement window typical.' },
+    { id: 'hedgerow',    parent: 'hunter',   type: 'leaf', label: 'Hedgerow Dental', freshness: 0.82, detail: 'Inbound, scored 78/100 by Atlas. Likely Standard tier.' },
+    { id: 'perf-clinic', parent: 'hunter',   type: 'leaf', label: 'Performance Clinic', freshness: 0.90, detail: 'Discovery call Wednesday Jun 3. Beacon drafting prep brief now.' },
+    { id: 'pixel-pools', parent: 'hunter',   type: 'leaf', label: 'Pixel Pools LLC', freshness: 0.65, detail: 'Proposal sent May 29, no reply. 2 days overdue.' },
+
+    { id: 'li-post-v1', parent: 'creative',  type: 'leaf', label: 'LinkedIn post v1', freshness: 0.86, detail: 'Indy SMB IT topic. Direct tone, ends with question.' },
+    { id: 'li-post-v2', parent: 'creative',  type: 'leaf', label: 'LinkedIn post v2', freshness: 0.86, detail: 'Indy SMB IT topic. Story angle, ends with question.' },
+    { id: 'li-post-v3', parent: 'creative',  type: 'leaf', label: 'LinkedIn post v3', freshness: 0.86, detail: 'Indy SMB IT topic. Stat-led, ends with question.' },
+    { id: 'email-tmpl', parent: 'creative',  type: 'leaf', label: 'Cold email templates', freshness: 0.55, detail: 'Four templates for break-fix to retainer conversion.' },
+
+    { id: 'memory-cons', parent: 'hermes',   type: 'leaf', label: 'Memory consolidation', freshness: 0.48, detail: 'Daily memory review job. Runs at 11 PM.' },
+    { id: 'snark-tune',  parent: 'hermes',   type: 'leaf', label: 'Voice snark tuning', freshness: 0.70, detail: 'Iterative test runs for ARIA\'s reply style.' },
+
+    { id: 'morning-brief',    parent: 'beacon', type: 'leaf', label: 'Morning brief · DRAFTING', freshness: 1.00, detail: 'MRR + actions + alerts. Currently generating. Read out loud over coffee.' },
+    { id: 'perf-clinic-prep', parent: 'beacon', type: 'leaf', label: 'Performance Clinic prep', freshness: 0.92, detail: 'Pre-call summary, due Tuesday night.' },
+    { id: 'weekly-summary',   parent: 'beacon', type: 'leaf', label: 'Last week summary', freshness: 0.42, detail: '7-day rollup of MRR delta, leads, intel.' },
+
+    { id: 'li-reply-1', parent: 'verse',     type: 'leaf', label: 'LinkedIn reply · "Mark T."', freshness: 0.96, detail: 'Drafted reply to Mark T. comment on Friday post. Approved tone, no edits suggested.' },
+    { id: 'li-reply-2', parent: 'verse',     type: 'leaf', label: 'LinkedIn reply · "Sarah K."', freshness: 0.96, detail: 'Drafted reply to Sarah K. comment on Friday post. Approved tone.' },
+  ],
+  edges: []
+};
+DATA.nodes.forEach(n => {
+  if (n.type === 'category') DATA.edges.push({ from: 'aria',   to: n.id });
+  if (n.type === 'leaf')     DATA.edges.push({ from: n.parent, to: n.id });
+});
+
+/* ============================================================
+   STAGE / RENDERER / SCENE
+   ============================================================ */
+const stage  = document.getElementById('stage');
+const canvas = document.getElementById('neural-canvas');
+const labelLayer = document.getElementById('label-layer');
+const tooltip = document.getElementById('neural-tooltip');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.setClearColor(0x000000, 1.0);
+
+const labelRenderer = new CSS2DRenderer({ element: labelLayer });
+labelRenderer.setSize(stage.clientWidth, stage.clientHeight);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+scene.fog = new THREE.FogExp2(0x02030a, 0.020);
+
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 240);
+camera.position.set(0, 1.2, 16.5);
+
+const controls = new OrbitControls(camera, labelRenderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.autoRotate = false; // we drive the camera with a Bezier path
+controls.enablePan = false;
+controls.minDistance = 8;
+controls.maxDistance = 22;
+controls.target.set(0, 0, 0);
+
+/* ============================================================
+   POSITIONS — categories on an irregular sphere (not a flat ring)
+   ============================================================ */
+const cats = DATA.nodes.filter(n => n.type === 'category');
+const CAT_R = 4.8;
+const catDirs = {};
+const phiOffsets   = [0.30, -0.55, 0.18, -0.20, 0.65, -0.35]; // varied Y
+const thetaOffsets = [0.00, 1.05, 2.10, 3.10, 4.05, 5.10];   // around
+cats.forEach((n, i) => {
+  const theta = thetaOffsets[i] + 0.18;
+  const phi   = phiOffsets[i];
+  const v = new THREE.Vector3(
+    Math.cos(theta) * Math.cos(phi),
+    Math.sin(phi),
+    Math.sin(theta) * Math.cos(phi)
+  ).normalize();
+  catDirs[n.id] = v.clone();
+});
+const nodePositions = { aria: new THREE.Vector3(0, 0, 0) };
+cats.forEach((n) => {
+  nodePositions[n.id] = catDirs[n.id].clone().multiplyScalar(CAT_R);
+});
+
+/* ============================================================
+   ARIA CORE — displaced icosphere with iridescent fresnel shader
+   ============================================================ */
+const coreUniforms = {
+  uTime:     { value: 0 },
+  uPulse:    { value: 0.0 },
+  uAccent:   { value: new THREE.Color(0xC5FF4D) },
+  uDeep:     { value: new THREE.Color(0x0a0e1a) },
+  uIridA:    { value: new THREE.Color(0xC5FF4D) },
+  uIridB:    { value: new THREE.Color(0x7AC8FF) },
+  uIridC:    { value: new THREE.Color(0xE89FE8) },
+};
+
+// Simplex 3D noise — Ashima / Stefan Gustavson
+const NOISE_GLSL = `
+  vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
+  vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
+  vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}
+  vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314*r;}
+  float snoise(vec3 v){
+    const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+    const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+    vec3 i  = floor(v + dot(v, C.yyy));
+    vec3 x0 = v - i + dot(i, C.xxx);
+    vec3 g = step(x0.yzx, x0.xyz);
+    vec3 l = 1.0 - g;
+    vec3 i1 = min(g.xyz, l.zxy);
+    vec3 i2 = max(g.xyz, l.zxy);
+    vec3 x1 = x0 - i1 + C.xxx;
+    vec3 x2 = x0 - i2 + C.yyy;
+    vec3 x3 = x0 - D.yyy;
+    i = mod289(i);
+    vec4 p = permute(permute(permute(
+              i.z + vec4(0.0, i1.z, i2.z, 1.0))
+            + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+            + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+    float n_ = 0.142857142857;
+    vec3 ns = n_*D.wyz - D.xzx;
+    vec4 j = p - 49.0*floor(p*ns.z*ns.z);
+    vec4 x_ = floor(j*ns.z);
+    vec4 y_ = floor(j - 7.0*x_);
+    vec4 x = x_*ns.x + ns.yyyy;
+    vec4 y = y_*ns.x + ns.yyyy;
+    vec4 h = 1.0 - abs(x) - abs(y);
+    vec4 b0 = vec4(x.xy, y.xy);
+    vec4 b1 = vec4(x.zw, y.zw);
+    vec4 s0 = floor(b0)*2.0 + 1.0;
+    vec4 s1 = floor(b1)*2.0 + 1.0;
+    vec4 sh = -step(h, vec4(0.0));
+    vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+    vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+    vec3 p0 = vec3(a0.xy, h.x);
+    vec3 p1 = vec3(a0.zw, h.y);
+    vec3 p2 = vec3(a1.xy, h.z);
+    vec3 p3 = vec3(a1.zw, h.w);
+    vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+    p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+    vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+    m = m * m;
+    return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+  }
+`;
+
+const coreVS = `
+  uniform float uTime;
+  uniform float uPulse;
+  varying vec3 vN;
+  varying vec3 vW;
+  varying float vDisp;
+  ${NOISE_GLSL}
+  void main() {
+    vec3 p = position;
+    float t = uTime * 0.32;
+    // layered noise displacement for a breathing, organic surface
+    float n1 = snoise(p * 1.3 + vec3(t, t*0.7, -t*0.5));
+    float n2 = snoise(p * 2.7 + vec3(-t*0.6, t*1.2, t*0.4)) * 0.5;
+    float n3 = snoise(p * 5.5 + vec3(t*1.5, -t, t*0.9))     * 0.22;
+    float disp = (n1 + n2 + n3) * (0.16 + uPulse * 0.06);
+    vec3 displaced = p + normal * disp;
+    vDisp = disp;
+    vec4 wp = modelMatrix * vec4(displaced, 1.0);
+    vW = wp.xyz;
+    vN = normalize(normalMatrix * normal);
+    gl_Position = projectionMatrix * viewMatrix * wp;
+  }
+`;
+const coreFS = `
+  precision highp float;
+  uniform float uTime;
+  uniform float uPulse;
+  uniform vec3  uAccent;
+  uniform vec3  uDeep;
+  uniform vec3  uIridA;
+  uniform vec3  uIridB;
+  uniform vec3  uIridC;
+  varying vec3  vN;
+  varying vec3  vW;
+  varying float vDisp;
+
+  // thin-film interference approximation
+  vec3 iridescence(float cosT) {
+    float a = cosT;
+    vec3 col =
+      uIridA * pow(1.0 - a, 2.0) +
+      uIridB * pow(a * (1.0 - a) * 4.0, 1.2) +
+      uIridC * pow(a, 3.0);
+    return col;
+  }
+
+  void main() {
+    vec3 V  = normalize(cameraPosition - vW);
+    vec3 N  = normalize(vN);
+    float ndv = max(dot(N, V), 0.0);
+
+    // strong fresnel rim
+    float fres = pow(1.0 - ndv, 3.0);
+
+    // iridescent thin-film tint along the rim
+    vec3 irid = iridescence(ndv);
+
+    // breathing intensity
+    float breath = 0.55 + 0.45 * sin(uTime * 0.9);
+    breath = mix(breath, 1.0, uPulse);
+
+    // core deep colour (dark, mostly), with crystalline bands from displacement
+    float bands = smoothstep(-0.10, 0.20, vDisp);
+    vec3 core = mix(uDeep, uAccent * 0.18, bands);
+
+    vec3 col = core
+             + irid * fres * 0.85
+             + uAccent * fres * fres * 0.55 * breath
+             + uAccent * smoothstep(0.65, 1.0, ndv) * 0.04;
+
+    // soft pulse from voice/listening
+    col += uAccent * uPulse * 0.20;
+
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
+const coreGeom = new THREE.IcosahedronGeometry(1.55, 6);  // v9.1: scaled up from 0.95 — ARIA is larger / more dominant
+const coreMat  = new THREE.ShaderMaterial({
+  uniforms: coreUniforms,
+  vertexShader:   coreVS,
+  fragmentShader: coreFS,
+  transparent: false,
+});
+const coreMesh = new THREE.Mesh(coreGeom, coreMat);
+coreMesh.userData = DATA.nodes.find(n => n.id === 'aria');
+coreMesh.userData._color = '#C5FF4D';
+scene.add(coreMesh);
+
+// outer translucent shell — gives sub-surface read
+const shellMat = new THREE.ShaderMaterial({
+  uniforms: { uTime: { value: 0 }, uAccent: { value: new THREE.Color(0xC5FF4D) } },
+  vertexShader: `
+    varying vec3 vN; varying vec3 vW;
+    void main(){
+      vN = normalize(normalMatrix * normal);
+      vec4 wp = modelMatrix * vec4(position, 1.0);
+      vW = wp.xyz;
+      gl_Position = projectionMatrix * viewMatrix * wp;
+    }
+  `,
+  fragmentShader: `
+    uniform float uTime; uniform vec3 uAccent;
+    varying vec3 vN; varying vec3 vW;
+    void main(){
+      vec3 V = normalize(cameraPosition - vW);
+      float fres = pow(1.0 - max(dot(normalize(vN), V), 0.0), 2.0);
+      float pulse = 0.55 + 0.45 * sin(uTime * 0.6);
+      vec3 col = uAccent * fres * 0.5 * pulse;
+      gl_FragColor = vec4(col, fres * 0.32);
+    }
+  `,
+  transparent: true,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  side: THREE.FrontSide,
+});
+const shellMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(2.05, 3), shellMat);  // v9.1: scaled up from 1.28
+scene.add(shellMesh);
+
+// inner ember — bigger, hotter (v9.1)
+const emberMat = new THREE.MeshBasicMaterial({ color: 0xC5FF4D, transparent: true, opacity: 0.92 });
+const emberMesh = new THREE.Mesh(new THREE.SphereGeometry(0.55, 32, 32), emberMat);
+scene.add(emberMesh);
+
+// v9.1 NEW — distinguishing wireframe halos around ARIA (gives her "constructed" scientific gravitas)
+const ariaWireframe = new THREE.LineSegments(
+  new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(1.72, 2)),
+  new THREE.LineBasicMaterial({
+    color: 0xC5FF4D, transparent: true, opacity: 0.22,
+    blending: THREE.AdditiveBlending,
+  })
+);
+scene.add(ariaWireframe);
+
+const ariaWireframe2 = new THREE.LineSegments(
+  new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(2.55, 1)),
+  new THREE.LineBasicMaterial({
+    color: 0xC5FF4D, transparent: true, opacity: 0.09,
+    blending: THREE.AdditiveBlending,
+  })
+);
+scene.add(ariaWireframe2);
+
+/* ============================================================
+   DENDRITES — curving Bezier tubes from core to each category
+   with a custom shader that pulses energy outward
+   ============================================================ */
+const dendriteUniforms = {
+  uTime:    { value: 0 },
+  uPulse:   { value: 0 },
+};
+
+const dendriteVS = `
+  varying vec2 vUv;
+  varying float vAlong;
+  void main() {
+    vUv = uv;
+    vAlong = uv.x; // x along the tube
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+const dendriteFS = `
+  precision highp float;
+  uniform float uTime;
+  uniform float uPulse;
+  uniform vec3  uColor;
+  uniform float uFreshness;
+  varying vec2  vUv;
+  varying float vAlong;
+
+  void main(){
+    // radial falloff: brighter at tube center
+    float radial = 1.0 - abs(vUv.y - 0.5) * 2.0;
+    radial = pow(radial, 2.0);
+
+    // base glow tapering toward the leaf end
+    float base = mix(1.10, 0.40, vAlong) * radial;
+
+    // travelling energy pulses
+    float speed = 0.18 + uFreshness * 0.30;
+    float p1 = fract(vAlong * 1.0 - uTime * speed);
+    float p2 = fract(vAlong * 1.0 - uTime * speed * 0.6 + 0.43);
+    float pulse = pow(1.0 - p1, 12.0) + pow(1.0 - p2, 20.0) * 0.7;
+    pulse *= radial * (0.65 + uFreshness * 0.7);
+
+    // global breath
+    float breath = 0.88 + 0.12 * sin(uTime * 0.9);
+
+    vec3 col = uColor * base * breath + uColor * pulse * 1.5;
+    col += uColor * uPulse * 0.45 * radial;
+
+    float alpha = clamp(base * 0.75 + pulse * 1.0, 0.0, 1.0);
+    gl_FragColor = vec4(col, alpha);
+  }
+`;
+
+function makeDendriteMaterial(color, freshness){
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: dendriteUniforms.uTime,
+      uPulse: dendriteUniforms.uPulse,
+      uColor: { value: new THREE.Color(color) },
+      uFreshness: { value: freshness },
+    },
+    vertexShader: dendriteVS,
+    fragmentShader: dendriteFS,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+}
+
+const dendrites = []; // { curve, mesh, fromId, toId, color }
+cats.forEach((cat) => {
+  const dir = catDirs[cat.id].clone();
+  const start = dir.clone().multiplyScalar(0.95);
+  const end   = nodePositions[cat.id].clone();
+
+  // build organic Bezier with two control points — perpendicular offsets
+  const mid = start.clone().lerp(end, 0.45);
+  // perpendicular vector
+  const perp1 = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize();
+  if (perp1.lengthSq() < 0.01) perp1.set(1, 0, 0);
+  const perp2 = new THREE.Vector3().crossVectors(dir, perp1).normalize();
+
+  const swirl = (Math.random() - 0.5) * 1.6;
+  const flex  = 0.6 + Math.random() * 0.5;
+  const ctrl1 = start.clone().lerp(end, 0.30).add(perp1.clone().multiplyScalar(swirl * 0.45)).add(perp2.clone().multiplyScalar(flex * 0.35));
+  const ctrl2 = start.clone().lerp(end, 0.70).add(perp1.clone().multiplyScalar(-swirl * 0.50)).add(perp2.clone().multiplyScalar(-flex * 0.20));
+
+  const curve = new THREE.CubicBezierCurve3(start, ctrl1, ctrl2, end);
+  const segs  = 120;
+  const tubeR = 0.062;
+  const radialSegs = 10;
+
+  // Custom: build tube with tapered radius (thicker at root, thinner at tip)
+  const tubeGeom = new THREE.TubeGeometry(curve, segs, tubeR, radialSegs, false);
+
+  // taper the radius along x (u axis): we morph positions directly
+  const positions = tubeGeom.attributes.position;
+  const uvs       = tubeGeom.attributes.uv;
+  const normals   = tubeGeom.attributes.normal;
+  const taperOf = (u) => 1.0 - Math.pow(u, 1.5) * 0.62; // 1.0 at root, ~0.38 at tip
+  for (let i = 0; i < positions.count; i++){
+    const u = uvs.getX(i);
+    const cx = curve.getPointAt(u);
+    // re-derive offset from center using normal direction
+    const px = positions.getX(i), py = positions.getY(i), pz = positions.getZ(i);
+    const ox = px - cx.x, oy = py - cx.y, oz = pz - cx.z;
+    const t  = taperOf(u);
+    positions.setXYZ(i, cx.x + ox * t, cx.y + oy * t, cx.z + oz * t);
+  }
+  positions.needsUpdate = true;
+  tubeGeom.computeBoundingSphere();
+
+  const mat = makeDendriteMaterial(cat.color, cat.freshness);
+  const mesh = new THREE.Mesh(tubeGeom, mat);
+  scene.add(mesh);
+
+  dendrites.push({ curve, mesh, fromId: 'aria', toId: cat.id, color: cat.color, freshness: cat.freshness });
+});
+
+/* ============================================================
+   CATEGORY GROWTH-TIPS — anemone-like filament burst (no spheres)
+   plus a tiny hot core
+   ============================================================ */
+const growthTips = {}; // catId -> { group, core, filaments[], baseDir, color }
+cats.forEach((cat) => {
+  const pos = nodePositions[cat.id];
+  const group = new THREE.Group();
+  group.position.copy(pos);
+  scene.add(group);
+
+  // orient the group so "outward" is the local +Z direction
+  const outward = pos.clone().normalize();
+  group.lookAt(group.position.clone().add(outward));
+
+  // tiny hot core
+  const coreSphere = new THREE.Mesh(
+    new THREE.SphereGeometry(0.13, 16, 16),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color(cat.color), transparent: true, opacity: 0.95 })
+  );
+  group.add(coreSphere);
+
+  // halo
+  const halo = new THREE.Mesh(
+    new THREE.SphereGeometry(0.34, 20, 20),
+    new THREE.MeshBasicMaterial({
+      color: new THREE.Color(cat.color), transparent: true, opacity: 0.16,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })
+  );
+  group.add(halo);
+
+  // anemone filaments — 14 short curving tubes pointing outward/sideways
+  const filaments = [];
+  const FIL_COUNT = 14;
+  for (let i = 0; i < FIL_COUNT; i++){
+    const u = i / FIL_COUNT;
+    const theta = u * Math.PI * 2 + Math.random() * 0.6;
+    const phi   = (Math.random() - 0.5) * 1.2;
+    const tipDir = new THREE.Vector3(
+      Math.cos(theta) * Math.cos(phi),
+      Math.sin(phi),
+      Math.abs(Math.sin(theta)) * 0.4 + 0.25  // bias outward in local +Z
+    ).normalize();
+    const len = 0.32 + Math.random() * 0.35;
+    const startF = new THREE.Vector3(0, 0, 0);
+    const tipF   = tipDir.clone().multiplyScalar(len);
+    const ctrlF  = startF.clone().lerp(tipF, 0.5).add(new THREE.Vector3(
+      (Math.random() - 0.5) * 0.12,
+      (Math.random() - 0.5) * 0.12,
+      (Math.random() - 0.5) * 0.12,
+    ));
+    const curveF = new THREE.QuadraticBezierCurve3(startF, ctrlF, tipF);
+    // v9.1: crisper — more tube segments, more radial segments, very thin walls for sharper silhouette
+    const fGeom  = new THREE.TubeGeometry(curveF, 20, 0.014, 10, false);
+    const fMat   = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: dendriteUniforms.uTime,
+        uColor: { value: new THREE.Color(cat.color) },
+        uFreshness: { value: cat.freshness },
+        uPhase: { value: Math.random() * Math.PI * 2 },
+      },
+      vertexShader: `
+        varying float vAlong;
+        void main(){ vAlong = uv.x; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+      `,
+      fragmentShader: `
+        uniform float uTime; uniform float uFreshness; uniform float uPhase;
+        uniform vec3 uColor; varying float vAlong;
+        void main(){
+          // v9.1: sharper taper (1.0 → 0.05), narrower shimmer envelope for crisper outline,
+          // tip-glow boost so the last 20% of each filament reads as a bright point.
+          float taper = mix(1.0, 0.05, vAlong);
+          float shimmer = 0.7 + 0.30 * sin(uTime * (1.4 + uFreshness) + uPhase);
+          float tipBoost = smoothstep(0.78, 1.0, vAlong) * 0.7;
+          vec3 col = uColor * taper * shimmer + uColor * tipBoost;
+          float a = taper * 0.95 + tipBoost * 0.4;
+          gl_FragColor = vec4(col, a);
+        }
+      `,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const filMesh = new THREE.Mesh(fGeom, fMat);
+    group.add(filMesh);
+
+    // v9.1 NEW — bright tip ember at each filament end for sharper read
+    const fTip = new THREE.Mesh(
+      new THREE.SphereGeometry(0.026, 12, 12),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color(cat.color), transparent: true, opacity: 0.95,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })
+    );
+    fTip.position.copy(tipF);
+    group.add(fTip);
+
+    filaments.push({ mesh: filMesh, tip: fTip, baseLen: len, dir: tipDir });
+  }
+
+  growthTips[cat.id] = { group, coreSphere, halo, filaments, color: cat.color, data: cat };
+});
+
+/* ============================================================
+   v9.1 NEW — WORK STATE MACHINE + LEASH LINES
+   When a sub-agent is "working" it detaches from its dendrite
+   anchor and orbits freely. A pulsing leash line shows the
+   live connection back to its home position. When the task
+   completes, the agent eases back to its anchor.
+   ============================================================ */
+const workStates = {};
+cats.forEach(cat => {
+  workStates[cat.id] = {
+    state: 'idle',                                    // 'idle' | 'working' | 'returning'
+    stateStartTime: 0,
+    floatStartOffset: new THREE.Vector3(),
+  };
+});
+// Demo: Beacon is actively working (drafting morning brief — freshness = 1.0)
+workStates['beacon'].state = 'working';
+workStates['beacon'].stateStartTime = 0;
+
+// Leash line per category — only visible while working/returning
+const leashes = {};
+cats.forEach(cat => {
+  const lGeom = new THREE.BufferGeometry();
+  lGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(2 * 3), 3));
+  const line = new THREE.Line(lGeom, new THREE.LineBasicMaterial({
+    color: new THREE.Color(cat.color),
+    transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  }));
+  scene.add(line);
+  leashes[cat.id] = line;
+});
+
+/* ============================================================
+   POLLEN — instanced bioluminescent leaves orbiting each tip
+   (a tight, swarming particle field per category)
+   ============================================================ */
+const POLLEN_PER_CAT = 90;
+const totalPollen = cats.length * POLLEN_PER_CAT;
+const pollenGeom = new THREE.BufferGeometry();
+const pollenPos    = new Float32Array(totalPollen * 3);
+const pollenColor  = new Float32Array(totalPollen * 3);
+const pollenSize   = new Float32Array(totalPollen);
+const pollenPhase  = new Float32Array(totalPollen);
+const pollenRadius = new Float32Array(totalPollen);
+const pollenTheta  = new Float32Array(totalPollen);
+const pollenPhi    = new Float32Array(totalPollen);
+const pollenSpeed  = new Float32Array(totalPollen);
+const pollenCatIdx = new Float32Array(totalPollen);
+
+// also track which leaves we've mapped to specific pollen for raycasting (sample)
+const leafNodes = DATA.nodes.filter(n => n.type === 'leaf');
+const leafToPollenIndex = {}; // id -> index
+
+cats.forEach((cat, ci) => {
+  const pos = nodePositions[cat.id];
+  const col = new THREE.Color(cat.color);
+  // gather this cat's leaves
+  const leaves = leafNodes.filter(l => l.parent === cat.id);
+  for (let i = 0; i < POLLEN_PER_CAT; i++){
+    const gi = ci * POLLEN_PER_CAT + i;
+    // each leaf "claims" one specific pollen index for the hover map
+    if (i < leaves.length) leafToPollenIndex[leaves[i].id] = gi;
+    const r = 0.45 + Math.random() * 0.95;
+    const th = Math.random() * Math.PI * 2;
+    const ph = (Math.random() - 0.5) * Math.PI * 0.85;
+    pollenPos[gi*3]   = pos.x + Math.cos(th) * Math.cos(ph) * r;
+    pollenPos[gi*3+1] = pos.y + Math.sin(ph) * r;
+    pollenPos[gi*3+2] = pos.z + Math.sin(th) * Math.cos(ph) * r;
+    pollenColor[gi*3]   = col.r;
+    pollenColor[gi*3+1] = col.g;
+    pollenColor[gi*3+2] = col.b;
+    pollenSize[gi]   = 6.0 + Math.random() * 7.0;
+    pollenPhase[gi]  = Math.random() * Math.PI * 2;
+    pollenRadius[gi] = r;
+    pollenTheta[gi]  = th;
+    pollenPhi[gi]    = ph;
+    pollenSpeed[gi]  = 0.20 + Math.random() * 0.45;
+    pollenCatIdx[gi] = ci;
+  }
+});
+
+pollenGeom.setAttribute('position', new THREE.BufferAttribute(pollenPos, 3));
+pollenGeom.setAttribute('aColor',   new THREE.BufferAttribute(pollenColor, 3));
+pollenGeom.setAttribute('aSize',    new THREE.BufferAttribute(pollenSize, 1));
+pollenGeom.setAttribute('aPhase',   new THREE.BufferAttribute(pollenPhase, 1));
+
+const pollenMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uTime: { value: 0 },
+    uPixelRatio: { value: renderer.getPixelRatio() },
+  },
+  vertexShader: `
+    attribute vec3 aColor;
+    attribute float aSize;
+    attribute float aPhase;
+    uniform float uTime;
+    uniform float uPixelRatio;
+    varying vec3 vColor;
+    varying float vFlicker;
+    void main(){
+      vColor = aColor;
+      vFlicker = 0.55 + 0.45 * sin(uTime * 1.8 + aPhase * 5.0);
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      gl_Position = projectionMatrix * mv;
+      gl_PointSize = aSize * uPixelRatio * (1.0 / -mv.z) * 18.0;
+    }
+  `,
+  fragmentShader: `
+    varying vec3 vColor;
+    varying float vFlicker;
+    void main(){
+      vec2 uv = gl_PointCoord - 0.5;
+      float d = length(uv);
+      if (d > 0.5) discard;
+      float core  = smoothstep(0.5, 0.0, d);
+      float glow  = pow(1.0 - d * 2.0, 2.2);
+      vec3 col = vColor * (core * 0.95 + glow * 0.55) * vFlicker;
+      float a = (core * 0.9 + glow * 0.6) * vFlicker;
+      gl_FragColor = vec4(col, a);
+    }
+  `,
+  transparent: true,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+});
+const pollen = new THREE.Points(pollenGeom, pollenMat);
+scene.add(pollen);
+
+/* ============================================================
+   FIELD MIST — sparse, large, soft points that suggest atmosphere
+   ============================================================ */
+const MIST_N = 380;
+const mistGeom = new THREE.BufferGeometry();
+const mistPos  = new Float32Array(MIST_N * 3);
+const mistVel  = [];
+for (let i = 0; i < MIST_N; i++){
+  // distribute in a large sphere shell
+  const r = 10 + Math.random() * 24;
+  const th = Math.random() * Math.PI * 2;
+  const ph = Math.acos(2 * Math.random() - 1);
+  mistPos[i*3]   = r * Math.sin(ph) * Math.cos(th);
+  mistPos[i*3+1] = r * Math.cos(ph) * 0.55;
+  mistPos[i*3+2] = r * Math.sin(ph) * Math.sin(th);
+  mistVel.push([
+    (Math.random() - 0.5) * 0.004,
+    (Math.random() - 0.5) * 0.0025,
+    (Math.random() - 0.5) * 0.004,
+  ]);
+}
+mistGeom.setAttribute('position', new THREE.BufferAttribute(mistPos, 3));
+const mistMat = new THREE.ShaderMaterial({
+  uniforms: { uTime: { value: 0 }, uPixelRatio: { value: renderer.getPixelRatio() } },
+  vertexShader: `
+    uniform float uTime; uniform float uPixelRatio;
+    varying float vF;
+    void main(){
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      gl_Position = projectionMatrix * mv;
+      gl_PointSize = (1.0 / -mv.z) * 220.0 * uPixelRatio;
+      vF = 0.30 + 0.18 * sin(uTime * 0.6 + position.x * 0.5 + position.z * 0.3);
+    }
+  `,
+  fragmentShader: `
+    varying float vF;
+    void main(){
+      vec2 uv = gl_PointCoord - 0.5;
+      float d = length(uv);
+      if (d > 0.5) discard;
+      float a = pow(1.0 - d*2.0, 2.0);
+      gl_FragColor = vec4(vec3(0.78, 1.0, 0.55) * 0.25 * vF, a * vF * 0.35);
+    }
+  `,
+  transparent: true,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+});
+scene.add(new THREE.Points(mistGeom, mistMat));
+
+/* ============================================================
+   BACKDROP — soft warm/cool gradient sphere with deep noise
+   ============================================================ */
+const backdropMat = new THREE.ShaderMaterial({
+  uniforms: { uTime: { value: 0 } },
+  vertexShader: `
+    varying vec3 vP;
+    void main(){
+      vP = normalize(position);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    ${NOISE_GLSL}
+    uniform float uTime;
+    varying vec3 vP;
+    void main(){
+      // base deep navy with a single warm pool below and a cool pool above
+      vec3 deep = vec3(0.010, 0.012, 0.028);
+      vec3 cool = vec3(0.020, 0.040, 0.085);
+      vec3 warm = vec3(0.055, 0.025, 0.060);
+      float up   = smoothstep(-0.4, 0.7, vP.y);
+      float down = smoothstep( 0.3, -0.8, vP.y);
+      vec3 col = deep;
+      col = mix(col, cool, up * 0.55);
+      col = mix(col, warm, down * 0.42);
+      // a single soft "sun behind" highlight along -z
+      float behind = pow(max(-vP.z, 0.0), 4.0);
+      col += vec3(0.18, 0.22, 0.10) * behind * 0.10;
+      // very subtle noise to break banding
+      float n = snoise(vP * 4.0 + vec3(uTime * 0.05));
+      col += vec3(n) * 0.006;
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `,
+  side: THREE.BackSide,
+  depthWrite: false,
+});
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(85, 32, 32), backdropMat));
+
+/* ============================================================
+   FAR STARFIELD — minimal, restrained
+   ============================================================ */
+{
+  const N = 600;
+  const g = new THREE.BufferGeometry();
+  const a = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++){
+    const r = 55 + Math.random() * 25;
+    const th = Math.random() * Math.PI * 2;
+    const ph = Math.acos(2 * Math.random() - 1);
+    a[i*3]   = r * Math.sin(ph) * Math.cos(th);
+    a[i*3+1] = r * Math.cos(ph);
+    a[i*3+2] = r * Math.sin(ph) * Math.sin(th);
+  }
+  g.setAttribute('position', new THREE.BufferAttribute(a, 3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({
+    color: 0xffffff, size: 0.05, sizeAttenuation: true, transparent: true, opacity: 0.55,
+  })));
+}
+
+/* ============================================================
+   LABELS — CSS2D for hub + categories
+   ============================================================ */
+// hub label sits centered above core
+{
+  const div = document.createElement('div');
+  div.className = 'neural-label hub';
+  div.textContent = 'A·R·I·A';
+  const obj = new CSS2DObject(div);
+  obj.position.set(0, 1.55, 0);
+  coreMesh.add(obj);
+}
+// category labels — placed on the OUTSIDE end of the tip, with a short tick
+cats.forEach((cat) => {
+  const div = document.createElement('div');
+  div.className = 'neural-label category';
+  div.innerHTML = `<span class="tick"></span>${cat.label.toUpperCase()}`;
+  div.style.color = cat.color;
+  const obj = new CSS2DObject(div);
+  // hang the label off the tip, offset along the outward direction
+  obj.position.set(0, 0.22, 0);
+  growthTips[cat.id].group.add(obj);
+});
+
+/* ============================================================
+   POST-PROCESSING
+   - UnrealBloomPass (rich)
+   - Chromatic Aberration + Vignette + Film Grain (custom pass)
+   ============================================================ */
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(
+  new THREE.Vector2(stage.clientWidth, stage.clientHeight),
+  0.78,   // strength — slightly more restrained so dendrites read
+  0.72,   // radius
+  0.15    // threshold — lifts threshold so only bright pixels bloom
+);
+composer.addPass(bloom);
+
+const finalShader = {
+  uniforms: {
+    tDiffuse:  { value: null },
+    uTime:     { value: 0 },
+    uAberration: { value: 0.0028 },
+    uVignette:   { value: 1.10 },
+    uGrain:      { value: 0.040 },
+    uResolution: { value: new THREE.Vector2(stage.clientWidth, stage.clientHeight) },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+  `,
+  fragmentShader: `
+    precision highp float;
+    uniform sampler2D tDiffuse;
+    uniform float uTime;
+    uniform float uAberration;
+    uniform float uVignette;
+    uniform float uGrain;
+    uniform vec2  uResolution;
+    varying vec2 vUv;
+
+    float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+
+    void main(){
+      vec2 uv = vUv;
+      vec2 c  = uv - 0.5;
+
+      // chromatic aberration scaled by radius
+      float r2 = dot(c, c);
+      vec2 dir = normalize(c + 1e-5);
+      float strength = uAberration * (0.4 + r2 * 1.6);
+      float cr = texture2D(tDiffuse, uv + dir * strength).r;
+      float cg = texture2D(tDiffuse, uv).g;
+      float cb = texture2D(tDiffuse, uv - dir * strength).b;
+      vec3 col = vec3(cr, cg, cb);
+
+      // vignette
+      float vig = smoothstep(0.95, 0.20, length(c) * uVignette);
+      col *= mix(0.62, 1.0, vig);
+
+      // film grain
+      float n = hash(gl_FragCoord.xy + vec2(uTime * 60.0)) - 0.5;
+      col += n * uGrain;
+
+      // tiny lift in shadows for "filmic" feel
+      col = col + vec3(0.005, 0.006, 0.012);
+
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `
+};
+const finalPass = new ShaderPass(finalShader);
+composer.addPass(finalPass);
+composer.addPass(new OutputPass());
+
+/* ============================================================
+   RAYCASTER — hover meshes (hub + category tip cores)
+   For leaves we synthesise hover via pollen proximity later
+   ============================================================ */
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+const ndcMouse = new THREE.Vector2();
+let hoverMouseClient = { x: 0, y: 0 };
+let pointerActive = false;
+
+const hoverables = [coreMesh, ...cats.map(c => growthTips[c.id].coreSphere)];
+// attach userData on the tip cores
+cats.forEach(c => {
+  growthTips[c.id].coreSphere.userData = { ...c, _color: c.color };
+});
+
+stage.addEventListener('pointermove', e => {
+  pointerActive = true;
+  const rect = stage.getBoundingClientRect();
+  hoverMouseClient.x = e.clientX - rect.left;
+  hoverMouseClient.y = e.clientY - rect.top;
+  ndcMouse.x = (hoverMouseClient.x / rect.width) * 2 - 1;
+  ndcMouse.y = -(hoverMouseClient.y / rect.height) * 2 + 1;
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+});
+stage.addEventListener('pointerleave', () => {
+  pointerActive = false;
+  tooltip.style.display = 'none';
+});
+
+function updateHover(){
+  if (!pointerActive) { tooltip.style.display = 'none'; return; }
+  raycaster.setFromCamera(ndcMouse, camera);
+  const hits = raycaster.intersectObjects(hoverables, false);
+
+  let d = null;
+  if (hits.length){
+    d = hits[0].object.userData;
+  } else {
+    // also probe leaf pollen by screen-space proximity
+    // (cheap: project a sample of representative leaf pollen positions)
+    let best = null, bestDist = 22;
+    for (const lf of leafNodes){
+      const gi = leafToPollenIndex[lf.id];
+      if (gi == null) continue;
+      const arr = pollenGeom.attributes.position.array;
+      const v = new THREE.Vector3(arr[gi*3], arr[gi*3+1], arr[gi*3+2]);
+      v.project(camera);
+      const sx = (v.x * 0.5 + 0.5) * stage.clientWidth;
+      const sy = (-v.y * 0.5 + 0.5) * stage.clientHeight;
+      const dx = sx - hoverMouseClient.x, dy = sy - hoverMouseClient.y;
+      const dd = Math.sqrt(dx*dx + dy*dy);
+      if (dd < bestDist) { bestDist = dd; best = lf; }
+    }
+    if (best) {
+      d = { ...best, _color: DATA.nodes.find(n => n.id === best.parent)?.color || '#fff' };
+    }
+  }
+
+  if (d){
+    tooltip.style.display = 'block';
+    const rect = stage.getBoundingClientRect();
+    let x = hoverMouseClient.x + 18;
+    let y = hoverMouseClient.y + 18;
+    if (x > rect.width - 360) x = hoverMouseClient.x - 360;
+    if (y > rect.height - 160) y = hoverMouseClient.y - 140;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top  = y + 'px';
+    const lbl = tooltip.querySelector('.label');
+    lbl.textContent = d.label;
+    lbl.style.color = d._color || '#fff';
+    tooltip.querySelector('.detail').textContent = d.detail;
+    tooltip.querySelector('.freshness').innerHTML =
+      `<span class="lime">${d.type}</span> · freshness <span class="lime">${Math.round(d.freshness * 100)}%</span>`;
+    tooltip.querySelector('.bar .fill').style.width = (d.freshness * 100) + '%';
+    tooltip.querySelector('.bar .fill').style.background = d._color || '#C5FF4D';
+    tooltip.querySelector('.bar .fill').style.boxShadow  = `0 0 8px ${d._color || '#C5FF4D'}`;
+  } else {
+    tooltip.style.display = 'none';
+  }
+}
+
+/* ============================================================
+   RESIZE
+   ============================================================ */
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  labelRenderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  composer.setSize(w, h);
+  bloom.setSize(w, h);
+  finalPass.uniforms.uResolution.value.set(w, h);
+  pollenMat.uniforms.uPixelRatio.value = renderer.getPixelRatio();
+  mistMat.uniforms.uPixelRatio.value   = renderer.getPixelRatio();
+}
+resize();
+new ResizeObserver(resize).observe(stage);
+
+/* ============================================================
+   CAMERA CHOREOGRAPHY — slow figure-eight Bezier-ish, breathing FOV,
+   subtle parallax response to mouse
+   ============================================================ */
+const camAnchor = new THREE.Vector3(0, 0.8, 13.5);
+let parallaxTarget = new THREE.Vector2(0, 0);
+window.addEventListener('mousemove', (e) => {
+  const x = (e.clientX / window.innerWidth)  * 2 - 1;
+  const y = (e.clientY / window.innerHeight) * 2 - 1;
+  parallaxTarget.set(x * 0.45, -y * 0.30);
+});
+
+/* ============================================================
+   ANIMATION LOOP
+   ============================================================ */
+const clock = new THREE.Clock();
+let lastTipPositions = {};
+cats.forEach(c => lastTipPositions[c.id] = nodePositions[c.id].clone());
+
+let voicePulse = 0; // simulated speaking pulse
+function animate() {
+  const t = clock.getElapsedTime();
+
+  // voice pulse — rolls on speak/listen states. for now, a soft baseline
+  // bumped by a periodic "speaking" envelope to make the demo feel alive
+  const speakEnv = 0.5 + 0.5 * Math.sin(t * 0.45);
+  voicePulse = 0.18 + speakEnv * 0.25;
+
+  // core
+  coreUniforms.uTime.value  = t;
+  coreUniforms.uPulse.value = voicePulse;
+  shellMat.uniforms.uTime.value = t;
+  emberMesh.scale.setScalar(1.0 + Math.sin(t * 2.3) * 0.08 + voicePulse * 0.15);
+
+  // dendrites
+  dendriteUniforms.uTime.value  = t;
+  dendriteUniforms.uPulse.value = voicePulse;
+
+  // v9.1: ARIA wireframe halos counter-rotate for added depth
+  ariaWireframe.rotation.y = t * 0.10;
+  ariaWireframe.rotation.x = Math.sin(t * 0.15) * 0.15;
+  ariaWireframe2.rotation.y = -t * 0.06;
+  ariaWireframe2.rotation.z = Math.cos(t * 0.10) * 0.12;
+
+  // category tips — gentle bob & rotate, freshness brightens
+  // v9.1: PLUS Lissajous "float-when-working" + smooth return + pulsing leash line
+  cats.forEach((cat, i) => {
+    const tip = growthTips[cat.id];
+    const base = nodePositions[cat.id];
+
+    // gentle ambient bob (same as v9)
+    const dx = Math.sin(t * 0.42 + i * 1.7) * 0.08;
+    const dy = Math.cos(t * 0.35 + i * 2.1) * 0.06;
+    const dz = Math.sin(t * 0.30 + i * 0.9) * 0.07;
+    const anchor = base.clone().add(new THREE.Vector3(dx, dy, dz));
+
+    // v9.1: work-state machine — adds Lissajous orbit when "working"
+    const ws = workStates[cat.id];
+    const tSince = t - ws.stateStartTime;
+    let floatOffset = new THREE.Vector3();
+
+    if (ws.state === 'working') {
+      const r = 1.7;
+      floatOffset.set(
+        Math.sin(tSince * 0.65) * r * 0.80,
+        Math.cos(tSince * 0.75 + 1.2) * r * 0.55,
+        Math.sin(tSince * 0.45 + 2.4) * r * 0.70
+      );
+      // Demo cycle: work for 8 seconds, then begin return
+      if (tSince > 8) {
+        ws.floatStartOffset.copy(floatOffset);
+        ws.state = 'returning';
+        ws.stateStartTime = t;
+      }
+    }
+    if (ws.state === 'returning') {
+      const k = Math.min(1, tSince / 1.6);
+      const eased = 1 - Math.pow(1 - k, 3); // ease-out cubic
+      floatOffset.copy(ws.floatStartOffset).multiplyScalar(1 - eased);
+      if (tSince > 1.6) {
+        ws.state = 'idle';
+        ws.stateStartTime = t;
+      }
+    }
+    if (ws.state === 'idle' && cat.id === 'beacon') {
+      // Demo: Beacon re-triggers working state after 2s idle so user can see the cycle
+      if (tSince > 2) {
+        ws.state = 'working';
+        ws.stateStartTime = t;
+      }
+    }
+
+    const np = anchor.clone().add(floatOffset);
+    tip.group.position.copy(np);
+
+    // v9.1: keep orientation locked to the BASE outward direction so the tip
+    // doesn't flip wildly while it's orbiting away from its anchor
+    const outwardBase = base.clone().normalize();
+    const lookTarget = np.clone().add(outwardBase);
+    tip.group.lookAt(lookTarget);
+    tip.group.rotateZ(t * 0.05 + i * 0.3);
+
+    // halo breathes — pulses harder when working
+    const haloPulse = ws.state === 'working' ? 1.0 + Math.sin(t * 3.2 + i) * 0.18 : 1.0 + Math.sin(t * 1.1 + i) * 0.07;
+    tip.halo.scale.setScalar(haloPulse);
+    tip.coreSphere.material.opacity = 0.7 + cat.freshness * 0.25 + voicePulse * 0.05 + (ws.state === 'working' ? 0.1 : 0);
+
+    // v9.1: update leash line — visible only while working/returning
+    const leash = leashes[cat.id];
+    const lpos = leash.geometry.attributes.position.array;
+    lpos[0] = anchor.x; lpos[1] = anchor.y; lpos[2] = anchor.z;
+    lpos[3] = np.x;     lpos[4] = np.y;     lpos[5] = np.z;
+    leash.geometry.attributes.position.needsUpdate = true;
+    if (ws.state === 'working') {
+      leash.material.opacity = 0.32 + 0.28 * Math.abs(Math.sin(t * 5));  // pulsing energy line
+    } else if (ws.state === 'returning') {
+      leash.material.opacity = 0.45 * (1 - Math.min(1, tSince / 1.6));   // fade out as it returns
+    } else {
+      leash.material.opacity = 0;
+    }
+
+    lastTipPositions[cat.id] = np;
+  });
+
+  // pollen — swirl around their cat's tip with gentle curl
+  const arr = pollenGeom.attributes.position.array;
+  for (let ci = 0; ci < cats.length; ci++){
+    const cat = cats[ci];
+    const tipPos = lastTipPositions[cat.id];
+    for (let i = 0; i < POLLEN_PER_CAT; i++){
+      const gi = ci * POLLEN_PER_CAT + i;
+      const speed = pollenSpeed[gi];
+      pollenTheta[gi] += 0.0025 * speed;
+      pollenPhi[gi]   += Math.sin(t * 0.5 + pollenPhase[gi]) * 0.0006;
+      // curl-like wobble in radius
+      const r = pollenRadius[gi] + Math.sin(t * (0.8 + speed) + pollenPhase[gi]) * 0.07;
+      const th = pollenTheta[gi];
+      const ph = pollenPhi[gi];
+      arr[gi*3]   = tipPos.x + Math.cos(th) * Math.cos(ph) * r;
+      arr[gi*3+1] = tipPos.y + Math.sin(ph) * r;
+      arr[gi*3+2] = tipPos.z + Math.sin(th) * Math.cos(ph) * r;
+    }
+  }
+  pollenGeom.attributes.position.needsUpdate = true;
+  pollenMat.uniforms.uTime.value = t;
+
+  // mist drift
+  const ma = mistGeom.attributes.position.array;
+  for (let i = 0; i < MIST_N; i++){
+    const v = mistVel[i];
+    ma[i*3]   += v[0]; ma[i*3+1] += v[1]; ma[i*3+2] += v[2];
+    // wrap
+    const R = 30;
+    if (ma[i*3]   >  R) ma[i*3]   = -R; if (ma[i*3]   < -R) ma[i*3]   =  R;
+    if (ma[i*3+1] >  R*0.7) ma[i*3+1] = -R*0.7; if (ma[i*3+1] < -R*0.7) ma[i*3+1] =  R*0.7;
+    if (ma[i*3+2] >  R) ma[i*3+2] = -R; if (ma[i*3+2] < -R) ma[i*3+2] =  R;
+  }
+  mistGeom.attributes.position.needsUpdate = true;
+  mistMat.uniforms.uTime.value = t;
+  backdropMat.uniforms.uTime.value = t;
+
+  // camera choreography — slow figure-eight + breathing FOV + parallax
+  const ox = Math.sin(t * 0.06) * 2.2 + Math.sin(t * 0.025) * 0.8;
+  const oy = Math.sin(t * 0.05 + 1.0) * 0.55;
+  const oz = Math.cos(t * 0.06) * 1.0 + Math.cos(t * 0.022) * 0.6;
+  const desired = new THREE.Vector3(ox, 0.8 + oy, 15.5 + oz);
+  // mouse parallax adds small offset
+  desired.x += parallaxTarget.x * 0.8;
+  desired.y += parallaxTarget.y * 0.5;
+  // damp toward desired (when user isn't dragging)
+  if (!controls.dragging){
+    camera.position.lerp(desired, 0.012);
+  }
+  camera.fov = 42 + Math.sin(t * 0.22) * 0.9;
+  camera.updateProjectionMatrix();
+
+  // post uniforms
+  finalPass.uniforms.uTime.value = t;
+
+  controls.update();
+
+  updateHover();
+
+  composer.render();
+  labelRenderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+
+// detect dragging to disable auto-camera while user interacts
+controls.dragging = false;
+controls.addEventListener('start', () => { controls.dragging = true; });
+controls.addEventListener('end',   () => { setTimeout(() => controls.dragging = false, 1800); });
+
+animate();
+
+/* ============================================================
+   PILLS + MIC + DRAWER (unchanged shell)
+   ============================================================ */
+let tokens = 12842, cost = 0.421, lat = 0.74;
+setInterval(() => {
+  const inc = Math.floor(Math.random() * 280);
+  tokens += inc; cost += inc * 0.000015;
+  document.getElementById('tokenVal').textContent = (tokens / 1000).toFixed(1) + 'K';
+  document.getElementById('costVal').textContent  = '$' + cost.toFixed(2);
+  lat = 0.5 + Math.random() * 0.6;
+  const latEl = document.getElementById('latVal');
+  const latMini = document.getElementById('latMini');
+  latEl.textContent = lat.toFixed(2) + 's';
+  latMini.textContent = lat.toFixed(2) + 's';
+  if (lat < 1.0) { latEl.classList.add('fast'); latEl.classList.remove('slow'); }
+  else           { latEl.classList.add('slow'); latEl.classList.remove('fast'); }
+}, 2400);
+
+let listening = false;
+window.toggleListening = () => {
+  listening = !listening;
+  const btn = document.getElementById('micBtn'), pill = document.getElementById('statePill');
+  if (listening) { btn.classList.add('listening'); pill.classList.add('listening'); pill.textContent = 'Listening'; }
+  else           { btn.classList.remove('listening'); pill.classList.remove('listening'); pill.textContent = 'Idle'; }
+};
+window.toggleDrawer = () => {
+  const d = document.getElementById('drawer'), b = document.getElementById('drawerBackdrop'), t = document.getElementById('dashToggle');
+  const on = d.classList.toggle('on');
+  b.classList.toggle('on', on);
+  t.classList.toggle('on', on);
+};
+window.closeDrawer = () => {
+  document.getElementById('drawer').classList.remove('on');
+  document.getElementById('drawerBackdrop').classList.remove('on');
+  document.getElementById('dashToggle').classList.remove('on');
+};
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+</script>
+
+</body>
+</html>

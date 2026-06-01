@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ARIA — UI v3 (monochrome)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        rgb(3, 3, 7);
+    --bg-card:   rgba(255,255,255,0.025);
+    --bg-card-2: rgba(255,255,255,0.04);
+    --bg-elev:   rgba(255,255,255,0.06);
+    --border:    rgba(255,255,255,0.06);
+    --border-2:  rgba(255,255,255,0.12);
+    --text:      #FFFFFF;
+    --text-dim:  rgba(255,255,255,0.62);
+    --text-mute: rgba(255,255,255,0.38);
+    --accent:    #FFFFFF;
+    --accent-2:  rgba(255,255,255,0.55);
+    --warn:      #F2B04E;
+    --hot:       #FF6B5C;
+    --info:      #6FA8DC;
+
+    --font-display: "Space Grotesk", system-ui, sans-serif;
+    --font-body:    "Geist", ui-sans-serif, system-ui, sans-serif;
+    --font-mono:    "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  body { min-height: 100vh; position: relative; }
+
+  /* ============== Ambient canvas ============== */
+  #ambient { position: fixed; inset: 0; z-index: 0; opacity: 0.28; pointer-events: none; }
+  .stage { position: relative; z-index: 1; }
+  .mono { font-family: var(--font-mono); font-feature-settings: 'tnum' 1; }
+  .display { font-family: var(--font-display); letter-spacing: -0.025em; }
+  .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.05em; color: var(--text-dim); }
+  .eyebrow::before { content: "◦ "; color: var(--accent); margin-right: 4px; }
+  /* MONO: give accent text a subtle glow so it pops against pure-white body text */
+  .hero-headline .accent { text-shadow: 0 0 28px rgba(255,255,255,0.35); }
+  .hero-headline { font-weight: 600; }
+  .hero-headline .accent { font-weight: 700; }
+  .nav-chip.active { color: rgb(3,3,7); background: #FFFFFF; border-color: #FFFFFF; }
+
+  /* ============== TOP BAR ============== */
+  .top {
+    padding: 20px 36px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky; top: 0; z-index: 30;
+    backdrop-filter: blur(14px);
+    background: rgba(3,3,7,0.78);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand-row { display: flex; align-items: center; gap: 16px; }
+  .aria-sigil {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-2);
+    display: flex; align-items: center; justify-content: center;
+    flex: 0 0 38px;
+    color: var(--accent);
+    position: relative;
+  }
+  .aria-sigil svg { width: 24px; height: 24px; animation: sigilrot 18s linear infinite; }
+  @keyframes sigilrot { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .brand-text { font-family: var(--font-display); font-size: 15px; letter-spacing: -0.01em; font-weight: 600; }
+  .brand-text .div { color: var(--text-mute); font-weight: 400; margin: 0 8px; }
+
+  .top-meta { display: flex; gap: 26px; align-items: center; font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
+  .top-meta .clock { color: var(--text); }
+  .top-meta .presence { display: flex; align-items: center; gap: 8px; }
+  .top-meta .presence .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ============== PAGE SHELL ============== */
+  .page { max-width: 1320px; margin: 0 auto; padding: 36px 36px 140px; }
+
+  /* ============== HERO ============== */
+  .hero { margin-bottom: 40px; }
+  .hero-eyebrow { margin-bottom: 10px; }
+  .hero-headline {
+    font-family: var(--font-display);
+    font-size: 54px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    margin-bottom: 14px;
+  }
+  .hero-headline .accent { color: var(--accent); }
+  .hero-headline .dim { color: var(--text-mute); }
+  .hero-sub { font-size: 15px; color: var(--text-dim); line-height: 1.55; max-width: 700px; }
+
+  /* ============== KPI STRIP ============== */
+  .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 42px; }
+  .kpi {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 24px;
+    backdrop-filter: blur(8px);
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi .label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--text-mute);
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  .kpi .label::before { content: "◦ "; color: var(--accent); }
+  .kpi .val {
+    font-family: var(--font-display);
+    font-size: 44px;
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    line-height: 1;
+  }
+  .kpi .val .div { color: var(--text-mute); font-size: 22px; font-weight: 500; margin-left: 6px; }
+  .kpi .delta { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); margin-top: 10px; }
+  .kpi .delta .pos { color: var(--accent); }
+  .kpi .delta .neg { color: var(--hot); }
+  .kpi .delta .warn { color: var(--warn); }
+  .kpi .progress {
+    height: 3px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    margin-top: 14px;
+    overflow: hidden;
+  }
+  .kpi .progress .fill { height: 100%; background: var(--accent); width: 12%; border-radius: 2px; box-shadow: 0 0 10px rgba(255,255,255,0.6); }
+
+  /* ============== 2-COLUMN MAIN ============== */
+  .main-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; margin-bottom: 42px; }
+
+  /* ===== Actions panel ===== */
+  .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 26px;
+    backdrop-filter: blur(8px);
+  }
+  .panel-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 18px; padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-title { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -0.015em; }
+  .panel-title .ann { color: var(--text-mute); font-weight: 400; font-size: 13px; margin-left: 8px; }
+  .panel-aside { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); }
+
+  .action-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 18px;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .action-row:last-child { border-bottom: none; }
+  .action-row .marker {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex: 0 0 8px;
+    box-shadow: 0 0 8px var(--accent);
+  }
+  .action-row .marker.overdue { background: var(--hot); box-shadow: 0 0 8px var(--hot); }
+  .action-row .marker.soon { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+  .action-row .marker.future { background: rgba(255,255,255,0.15); box-shadow: none; }
+  .action-row .body { }
+  .action-row .body .title { font-size: 14.5px; color: var(--text); margin-bottom: 3px; }
+  .action-row .body .meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); }
+  .action-row .due { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); text-align: right; }
+  .action-row .due.hot { color: var(--hot); }
+  .action-row .due.soon { color: var(--warn); }
+  .action-row .arr { color: var(--text-mute); font-family: var(--font-mono); font-size: 14px; cursor: pointer; }
+  .action-row .arr:hover { color: var(--accent); }
+
+  /* ===== Intel feed ===== */
+  .intel-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .intel-row:last-child { border-bottom: none; }
+  .intel-source {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    flex: 0 0 32px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase;
+    border: 1px solid var(--border-2);
+    overflow: hidden;
+  }
+  .intel-row .body .src { font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 3px; }
+  .intel-row .body .src::before { content: "◦ "; color: var(--accent); }
+  .intel-row .body .msg { font-size: 13.5px; line-height: 1.5; color: var(--text-dim); }
+  .intel-row .body .msg .hl { color: var(--text); }
+  .intel-row .time { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); white-space: nowrap; }
+
+  /* ===== Avatar gradients (sub-agents, placeholders) ===== */
+  .av-scout    { background: linear-gradient(135deg, #1a3320, #08160c); color: rgba(255,255,255,0.55); }
+  .av-hunter   { background: linear-gradient(135deg, #3a1f10, #170c06); color: rgba(255,255,255,0.55); }
+  .av-creative { background: linear-gradient(135deg, #321a3a, #130715); color: rgba(255,255,255,0.55); }
+  .av-hermes   { background: linear-gradient(135deg, #3a3315, #161305); color: rgba(255,255,255,0.55); }
+  .av-echo     { background: linear-gradient(135deg, #2b3a18, #0e1408); color: rgba(255,255,255,0.55); }
+  .av-atlas    { background: linear-gradient(135deg, #2d2517, #0f0d08); color: rgba(255,255,255,0.55); }
+  .av-beacon   { background: linear-gradient(135deg, #15263d, #08111d); color: rgba(255,255,255,0.55); }
+  .av-verse    { background: linear-gradient(135deg, #2a1735, #100819); color: rgba(255,255,255,0.55); }
+
+  /* ============== SUB-AGENT STRIP ============== */
+  .agent-strip {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 22px;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 24px;
+    margin-bottom: 28px;
+    backdrop-filter: blur(8px);
+  }
+  .agent-strip .left-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; color: var(--text-mute); text-transform: uppercase; }
+  .agent-strip .left-label::before { content: "◦ "; color: var(--accent); }
+  .agent-strip .tiles { display: flex; gap: 10px; overflow-x: auto; }
+  .agent-tile {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 6px;
+    min-width: 72px;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+  }
+  .agent-tile:hover { transform: translateY(-2px); }
+  .agent-tile .av {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    border: 1px solid var(--border-2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase;
+    position: relative;
+  }
+  .agent-tile .av.online::after {
+    content: "";
+    position: absolute; top: -2px; right: -2px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 6px var(--accent);
+  }
+  .agent-tile .av.shadow-tag::after {
+    content: "S";
+    position: absolute; bottom: -4px; right: -4px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--info);
+    color: var(--bg);
+    font-size: 8px; font-weight: 700; font-family: var(--font-mono);
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--bg);
+  }
+  .agent-tile .name { font-family: var(--font-display); font-size: 12px; color: var(--text); font-weight: 500; }
+  .agent-tile .role { font-family: var(--font-mono); font-size: 9px; color: var(--text-mute); text-align: center; }
+
+  /* ============== BOTTOM MIC BAR ============== */
+  .mic-bar {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 72px);
+    max-width: 1248px;
+    background: rgba(15,15,22,0.92);
+    border: 1px solid var(--border-2);
+    border-radius: 16px;
+    padding: 14px 20px;
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 18px;
+    align-items: center;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 40px rgba(255,255,255,0.04);
+    z-index: 50;
+  }
+  .mic-button {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-2);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim);
+    cursor: pointer;
+    flex: 0 0 44px;
+    transition: all 0.15s ease;
+  }
+  .mic-button:hover { color: var(--accent); border-color: var(--accent); }
+  .mic-button.listening { background: rgba(255,255,255,0.1); color: var(--accent); border-color: var(--accent); box-shadow: 0 0 24px rgba(255,255,255,0.25); }
+  .mic-bar .input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    outline: none;
+  }
+  .mic-bar .input::placeholder { color: var(--text-mute); }
+  .mic-bar .state-pill {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-mute);
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border-2);
+  }
+  .mic-bar .state-pill.listening { color: var(--accent); border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.05); }
+  .mic-bar .convo-toggle {
+    width: 40px; height: 36px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-2);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em;
+  }
+  .mic-bar .convo-toggle.on { color: var(--accent); border-color: var(--accent); background: rgba(255,255,255,0.08); }
+
+  /* ============== CONVERSATION OVERLAY ============== */
+  .convo-overlay {
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center, rgba(3,3,7,0.92), rgba(3,3,7,0.99) 70%);
+    backdrop-filter: blur(20px);
+    display: none;
+    z-index: 80;
+    overflow-y: auto;
+  }
+  .convo-overlay.on { display: block; }
+  .convo-inner {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 80px 36px 200px;
+    display: flex; flex-direction: column;
+    align-items: center;
+    gap: 36px;
+  }
+  .convo-close {
+    position: fixed; top: 24px; right: 24px;
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-2);
+    color: var(--text-dim);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 18px;
+  }
+
+  /* ARIA's big avatar for conversation mode */
+  .aria-big-avatar {
+    width: 160px; height: 160px;
+    border-radius: 32px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-2);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .aria-big-avatar svg { width: 100px; height: 100px; color: var(--accent); animation: sigilrot 18s linear infinite; }
+  .aria-big-avatar.speaking { box-shadow: 0 0 80px rgba(255,255,255,0.25); }
+  .aria-big-avatar.speaking::before {
+    content: ""; position: absolute; inset: -2px;
+    border-radius: 34px;
+    background: linear-gradient(45deg, transparent, rgba(255,255,255,0.4), transparent);
+    z-index: -1;
+    animation: ringspin 3s linear infinite;
+  }
+  @keyframes ringspin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  /* Voice waveform */
+  .waveform { display: flex; gap: 3px; align-items: flex-end; height: 28px; margin-top: 6px; }
+  .waveform .bar {
+    width: 3px; background: var(--accent);
+    border-radius: 2px;
+    transition: height 0.1s ease;
+  }
+  .waveform .bar:nth-child(1) { height: 6px; animation: wave 0.9s ease-in-out infinite; }
+  .waveform .bar:nth-child(2) { height: 12px; animation: wave 0.9s ease-in-out infinite 0.1s; }
+  .waveform .bar:nth-child(3) { height: 20px; animation: wave 0.9s ease-in-out infinite 0.2s; }
+  .waveform .bar:nth-child(4) { height: 14px; animation: wave 0.9s ease-in-out infinite 0.3s; }
+  .waveform .bar:nth-child(5) { height: 22px; animation: wave 0.9s ease-in-out infinite 0.15s; }
+  .waveform .bar:nth-child(6) { height: 8px; animation: wave 0.9s ease-in-out infinite 0.25s; }
+  .waveform .bar:nth-child(7) { height: 16px; animation: wave 0.9s ease-in-out infinite 0.05s; }
+  .waveform .bar:nth-child(8) { height: 10px; animation: wave 0.9s ease-in-out infinite 0.18s; }
+  @keyframes wave {
+    0%, 100% { transform: scaleY(0.4); }
+    50% { transform: scaleY(1); }
+  }
+
+  .convo-state-label {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em;
+    color: var(--accent); text-transform: uppercase; margin-top: 4px;
+  }
+
+  .convo-bubble {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.35;
+    color: var(--text);
+    text-align: center;
+    max-width: 100%;
+  }
+  .convo-bubble .dim { color: var(--text-mute); }
+  .convo-bubble .accent { color: var(--accent); }
+
+  .convo-transcript {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-mute);
+    text-align: center;
+    line-height: 1.7;
+    margin-top: 10px;
+  }
+
+  /* Sub-agent dispatch indicator in convo mode */
+  .convo-subagent-strip {
+    display: flex; gap: 16px; align-items: center;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 22px;
+    backdrop-filter: blur(8px);
+  }
+  .convo-subagent-strip .av-small {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border-2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.06em;
+  }
+  .convo-subagent-strip .text { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
+  .convo-subagent-strip .text .hl { color: var(--accent); }
+
+  /* ============== AVATAR STATES PREVIEW ============== */
+  .states-section { margin-top: 56px; padding-top: 36px; border-top: 1px solid var(--border); }
+  .states-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 22px; }
+  .state-cell {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 18px;
+    text-align: center;
+  }
+  .state-cell .av-state {
+    width: 72px; height: 72px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-2);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    color: var(--text-dim);
+    position: relative;
+  }
+  .state-cell .av-state svg { width: 44px; height: 44px; }
+  .state-cell.idle .av-state svg { color: var(--text-mute); }
+  .state-cell.listening .av-state { box-shadow: 0 0 24px rgba(255,255,255,0.25); border-color: var(--accent); }
+  .state-cell.listening .av-state svg { color: var(--accent); animation: sigilrot 8s linear infinite; }
+  .state-cell.thinking .av-state svg { color: var(--warn); animation: sigilrot 3s linear infinite; }
+  .state-cell.speaking .av-state svg { color: var(--accent); animation: sigilrot 18s linear infinite; }
+  .state-cell.speaking .av-state { box-shadow: 0 0 24px rgba(255,255,255,0.4); }
+  .state-cell .label { font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 4px; }
+  .state-cell .desc { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); line-height: 1.55; }
+
+  /* ============== NAV CHIPS ============== */
+  .nav-chips { display: flex; gap: 8px; margin-bottom: 32px; flex-wrap: wrap; }
+  .nav-chip {
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-2);
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .nav-chip:hover { color: var(--accent); border-color: var(--accent); }
+  .nav-chip.active { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+
+  .footer-note { margin-top: 60px; padding-top: 26px; border-top: 1px solid var(--border); font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); text-align: center; line-height: 1.7; }
+  .footer-note .lime { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<canvas id="ambient"></canvas>
+
+<div class="stage">
+
+<!-- ============== TOP BAR ============== -->
+<div class="top">
+  <div class="brand-row">
+    <div class="aria-sigil">
+      <!-- Direction B: geometric sigil. Swappable to A (sphere) or C (portrait) later. -->
+      <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="50" cy="50" r="40" />
+        <circle cx="50" cy="50" r="24" />
+        <line x1="50" y1="10" x2="50" y2="90" />
+        <line x1="10" y1="50" x2="90" y2="50" />
+        <circle cx="50" cy="50" r="3" fill="currentColor" />
+      </svg>
+    </div>
+    <div class="brand-text">
+      A.R.I.A. <span class="div">/</span>
+      <span style="color: var(--text-dim); font-weight: 500;">J&amp;J Consulting</span>
+    </div>
+  </div>
+  <div class="top-meta">
+    <div class="clock">09:14:22 EDT · Sun May 31</div>
+    <div style="color: var(--text-mute);">Greenwood, IN · 67° clear</div>
+    <div class="presence"><span class="dot"></span>idle · say "hey ARIA"</div>
+  </div>
+</div>
+
+<!-- ============== PAGE ============== -->
+<div class="page">
+
+  <!-- Nav chips (sub-pages) -->
+  <div class="nav-chips">
+    <div class="nav-chip active">◦ Console</div>
+    <div class="nav-chip">Factory</div>
+    <div class="nav-chip">Clients</div>
+    <div class="nav-chip">Pipeline</div>
+    <div class="nav-chip">Memory</div>
+    <div class="nav-chip">Settings</div>
+  </div>
+
+  <!-- ============== HERO ============== -->
+  <div class="hero">
+    <div class="eyebrow hero-eyebrow">Sunday morning · May 31, 2026</div>
+    <div class="hero-headline">You're <span class="accent">$14,550</span> from bridge.<br><span class="dim">Three follow-ups due. One is overdue.</span></div>
+    <div class="hero-sub">Pixel Pools hasn't responded to Friday's proposal. The Performance Clinic meets Wednesday and Beacon's drafting the prep brief now. Hedgerow Dental is the only fresh qualified lead this week.</div>
+  </div>
+
+  <!-- ============== KPI STRIP ============== -->
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="label">MRR vs bridge</div>
+      <div class="val mono">$1,950 <span class="div">/ $16,500</span></div>
+      <div class="delta">12% of bridge · <span class="pos">+$350 this week</span></div>
+      <div class="progress"><div class="fill"></div></div>
+    </div>
+    <div class="kpi">
+      <div class="label">Pipeline open</div>
+      <div class="val mono">$8,400</div>
+      <div class="delta">4 active · 1 hot · 1 stalled</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Follow-ups due</div>
+      <div class="val mono">3</div>
+      <div class="delta"><span class="neg">2 overdue</span> · 1 today · 1 this week</div>
+    </div>
+  </div>
+
+  <!-- ============== MAIN GRID ============== -->
+  <div class="main-grid">
+
+    <!-- ===== Today's actions ===== -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Today's actions <span class="ann">— what ARIA wants you to handle</span></div>
+        <div class="panel-aside">5 items</div>
+      </div>
+
+      <div class="action-row">
+        <div class="marker overdue"></div>
+        <div class="body">
+          <div class="title">Pixel Pools — reply to Friday's proposal</div>
+          <div class="meta">$1,800 deal · proposal sent May 29 · no response</div>
+        </div>
+        <div class="due hot">2d overdue</div>
+        <div class="arr">→</div>
+      </div>
+
+      <div class="action-row">
+        <div class="marker soon"></div>
+        <div class="body">
+          <div class="title">The Performance Clinic — discovery call prep</div>
+          <div class="meta">Wed Jun 3 · Beacon drafting brief · review by Tue night</div>
+        </div>
+        <div class="due soon">3 days</div>
+        <div class="arr">→</div>
+      </div>
+
+      <div class="action-row">
+        <div class="marker"></div>
+        <div class="body">
+          <div class="title">Hedgerow Dental — qualify budget</div>
+          <div class="meta">New inbound · Atlas scored 78/100 · likely Standard tier</div>
+        </div>
+        <div class="due">Sat Jun 7</div>
+        <div class="arr">→</div>
+      </div>
+
+      <div class="action-row">
+        <div class="marker"></div>
+        <div class="body">
+          <div class="title">LinkedIn post — Indianapolis SMB IT topic</div>
+          <div class="meta">Creative drafted 3 variations · approve one</div>
+        </div>
+        <div class="due">today</div>
+        <div class="arr">→</div>
+      </div>
+
+      <div class="action-row">
+        <div class="marker future"></div>
+        <div class="body">
+          <div class="title">Greenwood Church — retainer renewal</div>
+          <div class="meta">$900/mo · renewal in 22 days · no action needed yet</div>
+        </div>
+        <div class="due">Jun 22</div>
+        <div class="arr">→</div>
+      </div>
+    </div>
+
+    <!-- ===== Intel feed ===== -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Intel feed</div>
+        <div class="panel-aside">live</div>
+      </div>
+
+      <div class="intel-row">
+        <div class="intel-source av-scout">SCT</div>
+        <div class="body">
+          <div class="src">Scout · competitor watch</div>
+          <div class="msg"><span class="hl">Wayfinder Tech</span> dropped their Starter MSP tier to $399/mo (was $750). Possible price-war signal in the Indy south corridor.</div>
+        </div>
+        <div class="time">11 min ago</div>
+      </div>
+
+      <div class="intel-row">
+        <div class="intel-source av-beacon">BCN</div>
+        <div class="body">
+          <div class="src">Beacon · morning brief <span style="color: var(--info);">[shadow]</span></div>
+          <div class="msg">Brief is ready. <span class="hl">$1,950 MRR, three actions due, one Scout alert worth your attention.</span> Read out loud?</div>
+        </div>
+        <div class="time">23 min ago</div>
+      </div>
+
+      <div class="intel-row">
+        <div class="intel-source av-hunter">HNT</div>
+        <div class="body">
+          <div class="src">Hunter · lead surfacing</div>
+          <div class="msg"><span class="hl">Bridgepoint Dental Group</span> (Carmel, 18 users) hired a new operations director last week — historically a 3-month window for new MSP procurement.</div>
+        </div>
+        <div class="time">2h ago</div>
+      </div>
+
+      <div class="intel-row">
+        <div class="intel-source av-verse">VRS</div>
+        <div class="body">
+          <div class="src">Verse · LinkedIn reply queue</div>
+          <div class="msg">2 comment replies drafted on your Friday post. <span class="hl">Both approved-tone, no edits suggested.</span> Click to review.</div>
+        </div>
+        <div class="time">4h ago</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============== SUB-AGENT STRIP ============== -->
+  <div class="agent-strip">
+    <div class="left-label">Your team</div>
+    <div class="tiles">
+
+      <div class="agent-tile">
+        <div class="av av-scout online">SCT</div>
+        <div class="name">Scout</div>
+        <div class="role">research</div>
+      </div>
+
+      <div class="agent-tile">
+        <div class="av av-hunter online">HNT</div>
+        <div class="name">Hunter</div>
+        <div class="role">leads</div>
+      </div>
+
+      <div class="agent-tile">
+        <div class="av av-creative online">CRT</div>
+        <div class="name">Creative</div>
+        <div class="role">copy</div>
+      </div>
+
+      <div class="agent-tile">
+        <div class="av av-hermes online">HRM</div>
+        <div class="name">Hermes</div>
+        <div class="role">long-runs</div>
+      </div>
+
+      <div class="agent-tile">
+        <div class="av av-beacon shadow-tag">BCN</div>
+        <div class="name">Beacon</div>
+        <div class="role">brief</div>
+      </div>
+
+      <div class="agent-tile">
+        <div class="av av-verse online">VRS</div>
+        <div class="name">Verse</div>
+        <div class="role">linkedin</div>
+      </div>
+
+      <div class="agent-tile" style="opacity: 0.5;">
+        <div class="av" style="background: rgba(255,255,255,0.02); border-style: dashed;">+</div>
+        <div class="name" style="color: var(--text-mute);">Echo</div>
+        <div class="role" style="color: var(--text-mute);">pending</div>
+      </div>
+
+      <div class="agent-tile" style="opacity: 0.5;">
+        <div class="av" style="background: rgba(255,255,255,0.02); border-style: dashed;">+</div>
+        <div class="name" style="color: var(--text-mute);">Atlas</div>
+        <div class="role" style="color: var(--text-mute);">pending</div>
+      </div>
+
+      <div class="agent-tile" style="opacity: 0.5;" onclick="alert('opens Factory → spawn new agent')">
+        <div class="av" style="background: rgba(255,255,255,0.06); border-style: dashed; border-color: var(--accent); color: var(--accent);">+</div>
+        <div class="name" style="color: var(--accent);">Hire</div>
+        <div class="role" style="color: var(--accent);">factory</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============== AVATAR STATES PREVIEW ============== -->
+  <div class="states-section">
+    <div class="eyebrow">ARIA states</div>
+    <h2 class="display" style="font-size: 28px; font-weight: 600; letter-spacing: -0.02em; margin: 8px 0 4px;">She's never just "on."</h2>
+    <p style="color: var(--text-dim); font-size: 13.5px;">Four discrete states. Each gets its own visual treatment so you know what she's doing at a glance.</p>
+
+    <div class="states-grid">
+      <div class="state-cell idle">
+        <div class="av-state">
+          <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="50" cy="50" r="40" />
+            <circle cx="50" cy="50" r="24" />
+            <line x1="50" y1="10" x2="50" y2="90" />
+            <line x1="10" y1="50" x2="90" y2="50" />
+            <circle cx="50" cy="50" r="3" fill="currentColor" />
+          </svg>
+        </div>
+        <div class="label">Idle</div>
+        <div class="desc">Watching. Quiet sigil, no glow.</div>
+      </div>
+
+      <div class="state-cell listening">
+        <div class="av-state">
+          <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="50" cy="50" r="40" />
+            <circle cx="50" cy="50" r="24" />
+            <line x1="50" y1="10" x2="50" y2="90" />
+            <line x1="10" y1="50" x2="90" y2="50" />
+            <circle cx="50" cy="50" r="3" fill="currentColor" />
+          </svg>
+        </div>
+        <div class="label">Listening</div>
+        <div class="desc">Slow rotation + lime ring glow.</div>
+      </div>
+
+      <div class="state-cell thinking">
+        <div class="av-state">
+          <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="50" cy="50" r="40" />
+            <circle cx="50" cy="50" r="24" />
+            <line x1="50" y1="10" x2="50" y2="90" />
+            <line x1="10" y1="50" x2="90" y2="50" />
+            <circle cx="50" cy="50" r="3" fill="currentColor" />
+          </svg>
+        </div>
+        <div class="label">Thinking</div>
+        <div class="desc">Faster rotation, amber tint.</div>
+      </div>
+
+      <div class="state-cell speaking">
+        <div class="av-state">
+          <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="50" cy="50" r="40" />
+            <circle cx="50" cy="50" r="24" />
+            <line x1="50" y1="10" x2="50" y2="90" />
+            <line x1="10" y1="50" x2="90" y2="50" />
+            <circle cx="50" cy="50" r="3" fill="currentColor" />
+          </svg>
+        </div>
+        <div class="label">Speaking</div>
+        <div class="desc">Steady rotation + bright glow.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    Monochrome variant — all lime accents replaced with white <span class="lime">·</span> Direction B sigil still ARIA's avatar <span class="lime">·</span> compare to v1 lime version<br>
+    Press <span class="lime">⌥ + Space</span> to preview conversation mode <span class="lime">·</span> mic bar always pinned bottom
+  </div>
+
+</div>
+
+</div>
+
+<!-- ============== MIC BAR ============== -->
+<div class="mic-bar">
+  <div class="mic-button" id="micBtn" onclick="toggleListening()">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="2" width="6" height="12" rx="3"/>
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+      <line x1="12" y1="19" x2="12" y2="23"/>
+    </svg>
+  </div>
+  <input class="input" placeholder="Type a message or hold to speak..." />
+  <div class="state-pill" id="statePill">Idle</div>
+  <div class="convo-toggle on" onclick="openConvo()">CV</div>
+</div>
+
+<!-- ============== CONVERSATION OVERLAY ============== -->
+<div class="convo-overlay" id="convo">
+  <button class="convo-close" onclick="closeConvo()">×</button>
+  <div class="convo-inner">
+
+    <div class="aria-big-avatar speaking">
+      <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="50" cy="50" r="40" />
+        <circle cx="50" cy="50" r="24" />
+        <line x1="50" y1="10" x2="50" y2="90" />
+        <line x1="10" y1="50" x2="90" y2="50" />
+        <circle cx="50" cy="50" r="3" fill="currentColor" />
+      </svg>
+    </div>
+
+    <div style="text-align: center;">
+      <div class="convo-state-label">ARIA · speaking</div>
+      <div class="waveform" style="justify-content: center;">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+      </div>
+    </div>
+
+    <div class="convo-bubble">
+      "Pixel Pools hasn't replied to the proposal you sent Friday — <span class="accent">that's two days overdue.</span> Want me to draft a follow-up in your voice, or skip it and focus on the Performance Clinic prep?"
+    </div>
+
+    <div class="convo-transcript">
+      ◦ you: "what should i be working on right now"<br>
+      ◦ aria: ...generating reply
+    </div>
+
+    <div class="convo-subagent-strip">
+      <div class="av-small av-beacon">BCN</div>
+      <div class="text"><span class="hl">Beacon</span> is also drafting your Performance Clinic prep brief — ready in ~2 min.</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // Ambient particle canvas
+  (() => {
+    const c = document.getElementById('ambient');
+    const ctx = c.getContext('2d');
+    let w, h, particles;
+    function resize() {
+      w = c.width = window.innerWidth;
+      h = c.height = window.innerHeight;
+      particles = Array.from({length: 70}, () => ({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        r: 0.3 + Math.random() * 1.4,
+        vx: (Math.random() - 0.5) * 0.12,
+        vy: (Math.random() - 0.5) * 0.08,
+        a: 0.15 + Math.random() * 0.4,
+      }));
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function tick() {
+      ctx.clearRect(0, 0, w, h);
+      for (const p of particles) {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
+        if (p.y < 0) p.y = h; if (p.y > h) p.y = 0;
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(255, 255, 255, ${p.a * 0.22})`;
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const a = particles[i], b = particles[j];
+          const dx = a.x - b.x, dy = a.y - b.y;
+          const d2 = dx*dx + dy*dy;
+          if (d2 < 14000) {
+            ctx.strokeStyle = `rgba(255,255,255,${(1 - d2/14000) * 0.04})`;
+            ctx.lineWidth = 0.6;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+    tick();
+  })();
+
+  let listening = false;
+  function toggleListening() {
+    listening = !listening;
+    const btn = document.getElementById('micBtn');
+    const pill = document.getElementById('statePill');
+    if (listening) {
+      btn.classList.add('listening');
+      pill.classList.add('listening');
+      pill.textContent = 'Listening';
+    } else {
+      btn.classList.remove('listening');
+      pill.classList.remove('listening');
+      pill.textContent = 'Idle';
+    }
+  }
+
+  function openConvo() { document.getElementById('convo').classList.add('on'); }
+  function closeConvo() { document.getElementById('convo').classList.remove('on'); }
+
+  // Option-Space opens convo overlay (Trillion-style wake-word fallback)
+  document.addEventListener('keydown', (e) => {
+    if (e.altKey && e.code === 'Space') {
+      e.preventDefault();
+      if (document.getElementById('convo').classList.contains('on')) closeConvo();
+      else openConvo();
+    }
+    if (e.key === 'Escape') closeConvo();
+  });
+</script>
+
+</body>
+</html>

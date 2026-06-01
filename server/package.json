@@ -8,11 +8,13 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.54.0",
+    "@supabase/supabase-js": "^2.106.2",
     "axios": "^1.8.4",
     "cheerio": "^1.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "msedge-tts": "^2.0.5",
     "node-cron": "^3.0.3",
     "stripe": "^17.7.0",
     "ws": "^8.18.1"

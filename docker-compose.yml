@@ -5,6 +5,18 @@ services:
       - "3001:3001"
     env_file:
       - ./server/.env
+    environment:
+      # Company identity
+      - COMPANY_NAME=${COMPANY_NAME:-Jack & Jewell Consulting LLC}
+      - COFOUNDER_NAME=${COFOUNDER_NAME:-ARIA}
+      - FOUNDER_NAME=${FOUNDER_NAME:-Randy}
+      - BUSINESS_DESCRIPTION=${BUSINESS_DESCRIPTION:-IT managed services and AI consulting firm based in Greenwood, Indiana}
+      # Financial targets
+      - BRIDGE_MRR_TARGET=${BRIDGE_MRR_TARGET:-16500}
+      - BRIDGE_NET_TARGET=${BRIDGE_NET_TARGET:-11000}
+      - DAY_JOB_INCOME=${DAY_JOB_INCOME:-8200}
+      # Server
+      - CRON_TIMEZONE=${CRON_TIMEZONE:-America/Indiana/Indianapolis}
     restart: unless-stopped
 
   client:

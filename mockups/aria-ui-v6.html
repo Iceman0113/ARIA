@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ARIA — UI v6 (neural map immersive)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        rgb(3, 3, 7);
+    --bg-card:   rgba(255,255,255,0.025);
+    --bg-elev:   rgba(255,255,255,0.05);
+    --border:    rgba(255,255,255,0.06);
+    --border-2:  rgba(255,255,255,0.12);
+    --text:      #FFFFFF;
+    --text-dim:  rgba(255,255,255,0.62);
+    --text-mute: rgba(255,255,255,0.38);
+    --accent:    #C5FF4D;
+    --warn:      #F2B04E;
+    --hot:       #FF6B5C;
+    --info:      #6FA8DC;
+
+    --font-display: "Space Grotesk", system-ui, sans-serif;
+    --font-body:    "Geist", ui-sans-serif, system-ui, sans-serif;
+    --font-mono:    "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; overflow: hidden; height: 100vh; }
+  .mono { font-family: var(--font-mono); font-feature-settings: 'tnum' 1; }
+  .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.05em; color: var(--text-dim); }
+  .eyebrow::before { content: "◦ "; color: var(--accent); margin-right: 4px; }
+
+  /* ============== TOP BAR ============== */
+  .top {
+    padding: 16px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 30;
+    backdrop-filter: blur(14px);
+    background: rgba(3,3,7,0.7);
+    border-bottom: 1px solid var(--border);
+    height: 64px;
+  }
+  .brand-text { font-family: var(--font-display); font-size: 15px; letter-spacing: -0.01em; font-weight: 600; }
+  .brand-text .div { color: var(--text-mute); font-weight: 400; margin: 0 8px; }
+  .brand-text .sub { color: var(--text-dim); font-weight: 500; }
+  .brand-text .loc { color: var(--text-mute); font-weight: 400; font-size: 13px; margin-left: 8px; }
+
+  /* ============== PILLS ============== */
+  .pills { display: flex; gap: 8px; align-items: center; }
+  .pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 13px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.035);
+    border: 1px solid var(--border-2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text);
+    backdrop-filter: blur(8px);
+    transition: all 0.18s ease;
+  }
+  .pill .label { color: var(--text-mute); letter-spacing: 0.06em; text-transform: uppercase; font-size: 9px; }
+  .pill .val { color: var(--text); font-weight: 500; font-size: 12px; }
+  .pill .delta { font-size: 10px; }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
+  .pill.tokens .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: tokpulse 2s ease-in-out infinite; }
+  .pill.tokens .val.live { color: var(--accent); }
+  @keyframes tokpulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .pill.cost .dot { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+  .pill.cost .val { color: var(--warn); }
+  .pill.revenue .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .pill.revenue .progress { width: 30px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+  .pill.revenue .progress .fill { height: 100%; background: var(--accent); width: 12%; box-shadow: 0 0 6px var(--accent); }
+  .pill.latency .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .pill.latency .val.fast { color: var(--accent); }
+  .pill.latency .val.slow { color: var(--warn); }
+  .presence-mark {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+    padding-left: 14px; border-left: 1px solid var(--border);
+  }
+  .presence-mark .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: tokpulse 2.4s ease-in-out infinite; }
+
+  /* ============== NEURAL STAGE — FULL SCREEN ============== */
+  .stage {
+    position: fixed;
+    top: 64px;     /* below top bar */
+    left: 0;
+    right: 0;
+    bottom: 84px;  /* above mic bar */
+    overflow: hidden;
+  }
+  #neural-canvas { width: 100%; height: 100%; display: block; }
+
+  /* ============== FLOATING SUB-AGENT LABELS ============== */
+  /* These are 2D HTML chips positioned by Three.js projection */
+  .floating-agents {
+    position: absolute; inset: 0;
+    pointer-events: none;
+  }
+  .float-agent {
+    position: absolute;
+    transform-origin: left center;
+    transition: opacity 0.2s ease;
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  .float-agent-chip {
+    display: flex; align-items: center; gap: 9px;
+    padding: 6px 12px 6px 6px;
+    background: rgba(11,11,15,0.78);
+    border: 1px solid var(--border-2);
+    border-radius: 999px;
+    backdrop-filter: blur(8px);
+    white-space: nowrap;
+  }
+  .float-agent .av {
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    border: 1px solid var(--border-2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.65);
+    position: relative;
+    flex: 0 0 26px;
+  }
+  .float-agent .name {
+    font-family: var(--font-display); font-size: 13px; font-weight: 600; letter-spacing: -0.01em;
+  }
+  .float-agent .role {
+    font-family: var(--font-mono); font-size: 10px; color: var(--text-mute);
+    letter-spacing: 0.04em;
+    margin-left: 2px;
+  }
+  .float-agent .role::before { content: "·"; color: var(--text-mute); margin-right: 5px; }
+  .float-agent.active .float-agent-chip {
+    border-color: var(--accent);
+    background: rgba(197,255,77,0.08);
+    box-shadow: 0 0 24px rgba(197,255,77,0.2);
+  }
+  .float-agent.active .role {
+    color: var(--accent);
+    animation: tokpulse 1.5s ease-in-out infinite;
+  }
+  .float-agent .leader {
+    position: absolute;
+    left: 13px; top: 50%;
+    width: var(--len, 30px);
+    height: 1px;
+    background: linear-gradient(to right, rgba(255,255,255,0.4), rgba(255,255,255,0));
+    transform: translate(-100%, 0);
+  }
+  .float-agent.active .leader {
+    background: linear-gradient(to right, var(--accent), rgba(197,255,77,0));
+  }
+
+  /* Avatar gradients */
+  .av-scout { background: linear-gradient(135deg, #1a3320, #08160c); }
+  .av-hunter { background: linear-gradient(135deg, #3a1f10, #170c06); }
+  .av-creative { background: linear-gradient(135deg, #321a3a, #130715); }
+  .av-hermes { background: linear-gradient(135deg, #3a3315, #161305); }
+  .av-beacon { background: linear-gradient(135deg, #15263d, #08111d); }
+  .av-verse { background: linear-gradient(135deg, #2a1735, #100819); }
+
+  /* ============== ARIA STATE OVERLAY (bottom of stage) ============== */
+  .aria-overlay {
+    position: absolute;
+    left: 50%; bottom: 32px;
+    transform: translateX(-50%);
+    max-width: 720px;
+    width: calc(100% - 80px);
+    text-align: center;
+    z-index: 5;
+    pointer-events: none;
+  }
+  .aria-state-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 12px; margin-bottom: 14px;
+  }
+  .aria-state-label {
+    font-family: var(--font-mono);
+    font-size: 11px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--accent);
+  }
+  .aria-state-label::before { content: "◦ "; }
+  .waveform { display: flex; gap: 3px; align-items: flex-end; height: 18px; }
+  .waveform .bar { width: 2px; background: var(--accent); border-radius: 1px; }
+  .waveform .bar:nth-child(1) { height: 4px; animation: wave 0.9s ease-in-out infinite; }
+  .waveform .bar:nth-child(2) { height: 10px; animation: wave 0.9s ease-in-out infinite 0.1s; }
+  .waveform .bar:nth-child(3) { height: 14px; animation: wave 0.9s ease-in-out infinite 0.2s; }
+  .waveform .bar:nth-child(4) { height: 8px; animation: wave 0.9s ease-in-out infinite 0.3s; }
+  .waveform .bar:nth-child(5) { height: 16px; animation: wave 0.9s ease-in-out infinite 0.15s; }
+  .waveform .bar:nth-child(6) { height: 6px; animation: wave 0.9s ease-in-out infinite 0.25s; }
+  .waveform .bar:nth-child(7) { height: 12px; animation: wave 0.9s ease-in-out infinite 0.05s; }
+  @keyframes wave { 0%, 100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
+  .transcript {
+    font-family: var(--font-display);
+    font-size: 22px; font-weight: 500; line-height: 1.45;
+    letter-spacing: -0.015em;
+    color: var(--text);
+    text-shadow: 0 4px 24px rgba(3,3,7,0.8);
+  }
+  .transcript .dim { color: var(--text-mute); }
+  .transcript .accent { color: var(--accent); }
+
+  /* Side stat overlay (top right of stage) */
+  .stage-stats {
+    position: absolute; top: 22px; right: 28px;
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--text-mute); letter-spacing: 0.06em; text-transform: uppercase;
+    text-align: right;
+    z-index: 5;
+  }
+  .stage-stats .live { color: var(--accent); }
+  .stage-stats .live::before { content: "◦ "; }
+
+  /* Eyebrow label on top left of stage */
+  .stage-eyebrow {
+    position: absolute; top: 22px; left: 28px;
+    z-index: 5;
+  }
+
+  /* ============== MIC BAR ============== */
+  .mic-bar {
+    position: fixed; bottom: 18px; left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 56px);
+    max-width: 1280px;
+    background: rgba(13,13,17,0.92);
+    border: 1px solid var(--border-2);
+    border-radius: 16px;
+    padding: 12px 18px;
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto auto;
+    gap: 12px;
+    align-items: center;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 40px rgba(197,255,77,0.04);
+    z-index: 50;
+  }
+  .mic-button {
+    width: 40px; height: 40px;
+    border-radius: 11px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-2);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim);
+    cursor: pointer;
+    flex: 0 0 40px;
+    transition: all 0.15s ease;
+  }
+  .mic-button:hover { color: var(--accent); border-color: var(--accent); }
+  .mic-button.listening { background: rgba(197,255,77,0.1); color: var(--accent); border-color: var(--accent); box-shadow: 0 0 24px rgba(197,255,77,0.25); }
+  .mic-bar .input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    outline: none;
+  }
+  .mic-bar .input::placeholder { color: var(--text-mute); }
+  .mic-bar .lat-mini {
+    font-family: var(--font-mono); font-size: 10px; color: var(--text-mute);
+    padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.04);
+  }
+  .mic-bar .lat-mini .v { color: var(--accent); }
+  .mic-bar .state-pill {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-mute);
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border-2);
+  }
+  .mic-bar .state-pill.listening { color: var(--accent); border-color: rgba(197,255,77,0.4); background: rgba(197,255,77,0.05); }
+  .dash-toggle {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em;
+    color: var(--text-dim);
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border-2);
+    background: rgba(255,255,255,0.03);
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    text-transform: uppercase;
+    transition: all 0.15s ease;
+  }
+  .dash-toggle:hover { color: var(--accent); border-color: var(--accent); }
+  .dash-toggle .arrow { font-size: 14px; transition: transform 0.2s ease; }
+  .dash-toggle.on { color: var(--accent); border-color: var(--accent); background: rgba(197,255,77,0.06); }
+  .dash-toggle.on .arrow { transform: rotate(180deg); }
+
+  /* ============== DASHBOARD DRAWER (slides up from bottom) ============== */
+  .drawer {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: 60vh;
+    background: rgba(8,8,12,0.96);
+    border-top: 1px solid var(--border-2);
+    backdrop-filter: blur(20px);
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0.34, 1);
+    z-index: 40;
+    overflow-y: auto;
+    padding-bottom: 90px;
+  }
+  .drawer.on { transform: translateY(0); }
+  .drawer .drawer-handle {
+    position: sticky; top: 0; z-index: 2;
+    text-align: center;
+    padding: 14px 0 8px;
+    background: rgba(8,8,12,0.96);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+  }
+  .drawer .drawer-handle .handle-bar {
+    width: 48px; height: 4px;
+    background: var(--border-2);
+    border-radius: 2px;
+    margin: 0 auto 8px;
+  }
+  .drawer .drawer-handle .label {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.16em;
+    color: var(--text-mute); text-transform: uppercase;
+  }
+  .drawer .drawer-handle .label::before { content: "◦ "; color: var(--accent); }
+
+  .drawer-body { max-width: 1280px; margin: 0 auto; padding: 24px 32px; }
+  .drawer-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; }
+
+  .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 26px;
+    backdrop-filter: blur(8px);
+  }
+  .panel-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 16px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-title { font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+  .panel-title .ann { color: var(--text-mute); font-weight: 400; font-size: 12px; margin-left: 6px; }
+  .panel-aside { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); }
+
+  .action-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 14px; align-items: center;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .action-row:last-child { border-bottom: none; }
+  .action-row .marker {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 8px var(--accent);
+  }
+  .action-row .marker.hot { background: var(--hot); box-shadow: 0 0 8px var(--hot); }
+  .action-row .marker.soon { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+  .action-row .marker.future { background: rgba(255,255,255,0.15); box-shadow: none; }
+  .action-row .body .title { font-size: 14px; color: var(--text); margin-bottom: 2px; }
+  .action-row .body .meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); }
+  .action-row .due { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); text-align: right; white-space: nowrap; }
+  .action-row .due.hot { color: var(--hot); }
+  .action-row .due.soon { color: var(--warn); }
+
+  .intel-row {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .intel-row:last-child { border-bottom: none; }
+  .intel-row .av {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    border: 1px solid var(--border-2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 8px;
+    color: rgba(255,255,255,0.6);
+  }
+  .intel-row .body .src { font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); margin-bottom: 2px; }
+  .intel-row .body .src::before { content: "◦ "; color: var(--accent); }
+  .intel-row .body .msg { font-size: 13px; line-height: 1.5; color: var(--text-dim); }
+  .intel-row .body .msg .hl { color: var(--text); }
+  .intel-row .time { font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); white-space: nowrap; }
+
+  /* KPI strip inside drawer */
+  .drawer-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+  .drawer-kpi { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .drawer-kpi .label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; color: var(--text-mute); text-transform: uppercase; margin-bottom: 8px; }
+  .drawer-kpi .label::before { content: "◦ "; color: var(--accent); }
+  .drawer-kpi .val { font-family: var(--font-display); font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+  .drawer-kpi .val.lime { color: var(--accent); }
+  .drawer-kpi .delta { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+
+  /* Overlay backdrop when drawer is open */
+  .drawer-backdrop {
+    position: fixed; inset: 0 0 84px 0;
+    background: rgba(3,3,7,0.5);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 35;
+  }
+  .drawer-backdrop.on { opacity: 1; pointer-events: auto; }
+</style>
+</head>
+<body>
+
+<!-- ============== TOP BAR ============== -->
+<div class="top">
+  <div class="brand-text">
+    A.R.I.A. <span class="div">/</span>
+    <span class="sub">J&amp;J Consulting</span>
+    <span class="loc">· Greenwood, IN</span>
+  </div>
+  <div class="pills">
+    <div class="pill tokens"><span class="dot"></span><span class="label">tokens</span><span class="val live mono" id="tokenVal">12.8K</span><span class="delta mono" style="color:var(--text-mute);">today</span></div>
+    <div class="pill cost"><span class="dot"></span><span class="label">spend</span><span class="val mono" id="costVal">$0.42</span></div>
+    <div class="pill revenue"><span class="dot"></span><span class="label">MRR</span><span class="val mono">$1,950</span><div class="progress"><div class="fill"></div></div><span class="delta mono" style="color:var(--text-mute);">12%</span></div>
+    <div class="pill latency"><span class="dot"></span><span class="label">latency</span><span class="val fast mono" id="latVal">0.74s</span></div>
+    <div class="presence-mark"><span class="dot"></span>idle · "hey ARIA"</div>
+  </div>
+</div>
+
+<!-- ============== NEURAL STAGE ============== -->
+<div class="stage" id="stage">
+  <canvas id="neural-canvas"></canvas>
+
+  <div class="stage-eyebrow"><div class="eyebrow">Neural Map · ARIA core</div></div>
+
+  <div class="stage-stats">
+    <div class="live">6 sub-agents · 22 memory nodes</div>
+    <div style="margin-top: 4px;">drift 0.08°/s</div>
+  </div>
+
+  <!-- Floating sub-agent labels (positioned by JS via 3D projection) -->
+  <div class="floating-agents" id="floatingAgents">
+    <div class="float-agent" data-slug="scout">
+      <div class="float-agent-chip">
+        <div class="av av-scout">SCT</div>
+        <div class="name">Scout</div>
+        <div class="role">research</div>
+      </div>
+    </div>
+    <div class="float-agent" data-slug="hunter">
+      <div class="float-agent-chip">
+        <div class="av av-hunter">HNT</div>
+        <div class="name">Hunter</div>
+        <div class="role">leads</div>
+      </div>
+    </div>
+    <div class="float-agent" data-slug="creative">
+      <div class="float-agent-chip">
+        <div class="av av-creative">CRT</div>
+        <div class="name">Creative</div>
+        <div class="role">copy</div>
+      </div>
+    </div>
+    <div class="float-agent" data-slug="hermes">
+      <div class="float-agent-chip">
+        <div class="av av-hermes">HRM</div>
+        <div class="name">Hermes</div>
+        <div class="role">long-runs</div>
+      </div>
+    </div>
+    <div class="float-agent active" data-slug="beacon">
+      <div class="float-agent-chip">
+        <div class="av av-beacon">BCN</div>
+        <div class="name">Beacon</div>
+        <div class="role">drafting brief</div>
+      </div>
+    </div>
+    <div class="float-agent" data-slug="verse">
+      <div class="float-agent-chip">
+        <div class="av av-verse">VRS</div>
+        <div class="name">Verse</div>
+        <div class="role">linkedin</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARIA state + transcript at bottom of stage -->
+  <div class="aria-overlay">
+    <div class="aria-state-row">
+      <div class="aria-state-label">ARIA · speaking</div>
+      <div class="waveform">
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      </div>
+    </div>
+    <div class="transcript">
+      "You're <span class="accent">$14,550</span> from bridge. Pixel Pools is <span class="dim">two days overdue</span> on the proposal reply — want me to draft the follow-up?"
+    </div>
+  </div>
+</div>
+
+<!-- ============== MIC BAR ============== -->
+<div class="mic-bar">
+  <div class="mic-button" id="micBtn" onclick="toggleListening()">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="2" width="6" height="12" rx="3"/>
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+      <line x1="12" y1="19" x2="12" y2="23"/>
+    </svg>
+  </div>
+  <input class="input" placeholder='Type a message or say "hey ARIA"...' />
+  <div class="lat-mini">last <span class="v mono" id="latMini">0.74s</span></div>
+  <div class="state-pill" id="statePill">Idle</div>
+  <div class="dash-toggle" id="dashToggle" onclick="toggleDrawer()">
+    <span>Dashboard</span><span class="arrow">▴</span>
+  </div>
+</div>
+
+<!-- ============== DASHBOARD DRAWER ============== -->
+<div class="drawer-backdrop" id="drawerBackdrop" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-handle" onclick="closeDrawer()">
+    <div class="handle-bar"></div>
+    <div class="label">Dashboard · tap or press ESC to close</div>
+  </div>
+  <div class="drawer-body">
+
+    <!-- Compact KPIs at top of drawer -->
+    <div class="drawer-kpis">
+      <div class="drawer-kpi">
+        <div class="label">MRR vs bridge</div>
+        <div class="val lime mono">$1,950</div>
+        <div class="delta">/ $16,500 · 12% · <span style="color:var(--accent);">+$350 wk</span></div>
+      </div>
+      <div class="drawer-kpi">
+        <div class="label">Pipeline open</div>
+        <div class="val mono">$8,400</div>
+        <div class="delta">4 active · 1 hot</div>
+      </div>
+      <div class="drawer-kpi">
+        <div class="label">Follow-ups</div>
+        <div class="val mono">3 <span style="color:var(--hot); font-size:14px;">2 OVR</span></div>
+        <div class="delta">today · this week</div>
+      </div>
+      <div class="drawer-kpi">
+        <div class="label">Today's spend</div>
+        <div class="val mono" style="color:var(--warn);">$0.42</div>
+        <div class="delta">12.8K tokens · avg 0.74s</div>
+      </div>
+    </div>
+
+    <!-- Actions + Intel -->
+    <div class="drawer-grid">
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Today's actions <span class="ann">— what ARIA wants you to handle</span></div>
+          <div class="panel-aside">5 items</div>
+        </div>
+
+        <div class="action-row">
+          <div class="marker hot"></div>
+          <div class="body"><div class="title">Pixel Pools — reply to Friday's proposal</div><div class="meta">$1,800 deal · sent May 29 · no response</div></div>
+          <div class="due hot">2d overdue</div>
+        </div>
+        <div class="action-row">
+          <div class="marker soon"></div>
+          <div class="body"><div class="title">The Performance Clinic — discovery call prep</div><div class="meta">Wed Jun 3 · Beacon drafting · review by Tue</div></div>
+          <div class="due soon">3 days</div>
+        </div>
+        <div class="action-row">
+          <div class="marker"></div>
+          <div class="body"><div class="title">Hedgerow Dental — qualify budget</div><div class="meta">Atlas scored 78/100 · Standard tier likely</div></div>
+          <div class="due">Sat Jun 7</div>
+        </div>
+        <div class="action-row">
+          <div class="marker"></div>
+          <div class="body"><div class="title">LinkedIn — Indy SMB IT topic</div><div class="meta">Creative drafted 3 variations · approve one</div></div>
+          <div class="due">today</div>
+        </div>
+        <div class="action-row">
+          <div class="marker future"></div>
+          <div class="body"><div class="title">Greenwood Church — retainer renewal</div><div class="meta">$900/mo · 22 days out</div></div>
+          <div class="due">Jun 22</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Intel feed</div>
+          <div class="panel-aside">live</div>
+        </div>
+
+        <div class="intel-row">
+          <div class="av av-scout">SCT</div>
+          <div class="body"><div class="src">Scout · competitor watch</div><div class="msg"><span class="hl">Wayfinder Tech</span> dropped Starter tier to $399/mo. Possible price-war signal.</div></div>
+          <div class="time">11 min</div>
+        </div>
+        <div class="intel-row">
+          <div class="av av-beacon">BCN</div>
+          <div class="body"><div class="src">Beacon · brief ready</div><div class="msg"><span class="hl">$1,950 MRR, 3 actions due.</span> Read out loud?</div></div>
+          <div class="time">23 min</div>
+        </div>
+        <div class="intel-row">
+          <div class="av av-hunter">HNT</div>
+          <div class="body"><div class="src">Hunter · new lead</div><div class="msg"><span class="hl">Bridgepoint Dental</span> (Carmel, 18 users) hired new ops director.</div></div>
+          <div class="time">2h</div>
+        </div>
+        <div class="intel-row">
+          <div class="av av-verse">VRS</div>
+          <div class="body"><div class="src">Verse · LinkedIn</div><div class="msg">2 comment replies drafted. <span class="hl">No edits suggested.</span></div></div>
+          <div class="time">4h</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- ============== THREE.JS NEURAL MAP ============== -->
+<script type="importmap">
+{
+  "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.js" }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const canvas = document.getElementById('neural-canvas');
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+camera.position.set(0, 0.5, 5.5);
+camera.lookAt(0, 0, 0);
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+// ============ ARIA CORE ============
+const ariaCore = new THREE.Mesh(
+  new THREE.SphereGeometry(0.17, 32, 32),
+  new THREE.MeshBasicMaterial({ color: 0xC5FF4D })
+);
+scene.add(ariaCore);
+const halo1 = new THREE.Mesh(new THREE.SphereGeometry(0.30, 32, 32), new THREE.MeshBasicMaterial({ color: 0xC5FF4D, transparent: true, opacity: 0.2 }));
+const halo2 = new THREE.Mesh(new THREE.SphereGeometry(0.55, 32, 32), new THREE.MeshBasicMaterial({ color: 0xC5FF4D, transparent: true, opacity: 0.07 }));
+const halo3 = new THREE.Mesh(new THREE.SphereGeometry(0.95, 32, 32), new THREE.MeshBasicMaterial({ color: 0xC5FF4D, transparent: true, opacity: 0.025 }));
+scene.add(halo1); scene.add(halo2); scene.add(halo3);
+
+// "ARIA" label as a center DOM element (always centered)
+const ariaLabel = document.createElement('div');
+ariaLabel.style.cssText = `
+  position: absolute; pointer-events: none;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.18em;
+  color: var(--bg); text-transform: uppercase;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  z-index: 6;
+`;
+ariaLabel.textContent = 'ARIA';
+stage.appendChild(ariaLabel);
+
+// ============ SUB-AGENT NODES ============
+const subAgents = [
+  { slug: 'scout',    color: 0x6BD08F },
+  { slug: 'hunter',   color: 0xE08B5C },
+  { slug: 'creative', color: 0xB97FE5 },
+  { slug: 'hermes',   color: 0xE3CC68 },
+  { slug: 'beacon',   color: 0x6FA8DC, pulsing: true },
+  { slug: 'verse',    color: 0xC078E5 },
+];
+
+const subAgentNodes = [];
+const subRadius = 1.85;
+subAgents.forEach((sa, i) => {
+  const angle = (i / subAgents.length) * Math.PI * 2 + Math.PI * 0.16;
+  const yJitter = Math.sin(i * 1.7) * 0.45;
+  const node = new THREE.Mesh(
+    new THREE.SphereGeometry(0.09, 24, 24),
+    new THREE.MeshBasicMaterial({ color: sa.color })
+  );
+  node.position.set(Math.cos(angle) * subRadius, yJitter, Math.sin(angle) * subRadius);
+  scene.add(node);
+
+  const halo = new THREE.Mesh(
+    new THREE.SphereGeometry(0.16, 16, 16),
+    new THREE.MeshBasicMaterial({ color: sa.color, transparent: true, opacity: 0.22 })
+  );
+  halo.position.copy(node.position);
+  scene.add(halo);
+
+  // Edge to ARIA
+  const lineGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), node.position.clone()]);
+  const line = new THREE.Line(lineGeom, new THREE.LineBasicMaterial({
+    color: sa.color, transparent: true, opacity: sa.pulsing ? 0.55 : 0.28
+  }));
+  scene.add(line);
+
+  subAgentNodes.push({ node, halo, line, data: sa, baseAngle: angle, yJitter });
+});
+
+// ============ OUTER CONCEPT NODES ============
+const conceptNodes = [];
+const NUM_CONCEPTS = 26;
+for (let i = 0; i < NUM_CONCEPTS; i++) {
+  const theta = Math.acos(2 * Math.random() - 1);
+  const phi = 2 * Math.PI * Math.random();
+  const r = 2.9 + Math.random() * 0.7;
+  const x = r * Math.sin(theta) * Math.cos(phi);
+  const y = r * Math.sin(theta) * Math.sin(phi) * 0.55;
+  const z = r * Math.cos(theta);
+  const node = new THREE.Mesh(
+    new THREE.SphereGeometry(0.03, 12, 12),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 })
+  );
+  node.position.set(x, y, z);
+  scene.add(node);
+  conceptNodes.push(node);
+}
+
+// Concept-to-concept connections
+for (let i = 0; i < conceptNodes.length; i++) {
+  for (let j = i + 1; j < conceptNodes.length; j++) {
+    const d = conceptNodes[i].position.distanceTo(conceptNodes[j].position);
+    if (d < 1.5 && Math.random() < 0.45) {
+      const g = new THREE.BufferGeometry().setFromPoints([conceptNodes[i].position.clone(), conceptNodes[j].position.clone()]);
+      const m = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.06 + (1.5 - d) * 0.05 });
+      scene.add(new THREE.Line(g, m));
+    }
+  }
+}
+
+// Sub-agent → nearest concepts
+subAgentNodes.forEach(sa => {
+  const nearby = conceptNodes
+    .map(c => ({ c, d: c.position.distanceTo(sa.node.position) }))
+    .sort((a, b) => a.d - b.d).slice(0, 3);
+  nearby.forEach(({ c }) => {
+    const g = new THREE.BufferGeometry().setFromPoints([sa.node.position.clone(), c.position.clone()]);
+    const m = new THREE.LineBasicMaterial({ color: sa.data.color, transparent: true, opacity: 0.1 });
+    scene.add(new THREE.Line(g, m));
+  });
+});
+
+// ============ LABEL PROJECTION ============
+const floatingMap = {};
+document.querySelectorAll('.float-agent').forEach(el => {
+  floatingMap[el.dataset.slug] = el;
+});
+
+function project(node) {
+  const v = node.position.clone();
+  v.applyMatrix4(scene.matrixWorld);
+  v.project(camera);
+  const w = renderer.domElement.clientWidth;
+  const h = renderer.domElement.clientHeight;
+  const x = (v.x + 1) / 2 * w;
+  const y = (1 - v.y) / 2 * h;
+  const visible = v.z < 1;
+  return { x, y, depth: v.z, visible };
+}
+
+// ============ ANIMATION ============
+const clock = new THREE.Clock();
+
+function animate() {
+  const t = clock.getElapsedTime();
+
+  scene.rotation.y = t * 0.08;
+  scene.rotation.x = Math.sin(t * 0.14) * 0.08;
+
+  ariaCore.scale.setScalar(1 + Math.sin(t * 1.5) * 0.06);
+  halo1.scale.setScalar(1 + Math.sin(t * 1.1) * 0.1);
+  halo2.scale.setScalar(1 + Math.sin(t * 0.8 + 1) * 0.15);
+  halo3.scale.setScalar(1 + Math.sin(t * 0.5 + 2) * 0.18);
+
+  // Update sub-agent labels (project 3D to 2D)
+  subAgentNodes.forEach(sa => {
+    if (sa.data.pulsing) {
+      const sp = 1 + Math.sin(t * 4) * 0.3;
+      sa.node.scale.setScalar(sp);
+      sa.halo.scale.setScalar(1 + Math.sin(t * 4) * 0.5);
+      sa.halo.material.opacity = 0.3 + Math.sin(t * 4) * 0.2;
+    } else {
+      sa.node.scale.setScalar(1 + Math.sin(t * 0.8 + sa.baseAngle * 3) * 0.06);
+    }
+
+    // Project this sub-agent's position to screen, position the floating chip
+    const proj = project(sa.node);
+    const el = floatingMap[sa.data.slug];
+    if (el) {
+      // Offset chip to the right of the node, slightly down
+      const offsetX = 18;
+      const offsetY = -10;
+      el.style.left = (proj.x + offsetX) + 'px';
+      el.style.top  = (proj.y + offsetY) + 'px';
+      // Fade by depth — back-facing nodes get dimmer
+      let opacity = 1;
+      if (!proj.visible) opacity = 0;
+      else opacity = Math.max(0.25, 1 - Math.max(0, proj.depth) * 1.4);
+      el.style.opacity = opacity;
+      // Leader line length
+      el.style.setProperty('--len', Math.max(8, offsetX) + 'px');
+    }
+  });
+
+  // Project ARIA core to position the ARIA text label at the center
+  const ariaProj = project(ariaCore);
+  ariaLabel.style.left = ariaProj.x + 'px';
+  ariaLabel.style.top = ariaProj.y + 'px';
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+
+resize();
+new ResizeObserver(resize).observe(stage);
+animate();
+
+// ============ LIVE PILL UPDATES ============
+let tokens = 12842;
+let cost = 0.421;
+let lat = 0.74;
+setInterval(() => {
+  const inc = Math.floor(Math.random() * 280);
+  tokens += inc;
+  cost += inc * 0.000015;
+  document.getElementById('tokenVal').textContent = (tokens / 1000).toFixed(1) + 'K';
+  document.getElementById('costVal').textContent = '$' + cost.toFixed(2);
+
+  lat = 0.5 + Math.random() * 0.6;
+  const latEl = document.getElementById('latVal');
+  const latMini = document.getElementById('latMini');
+  latEl.textContent = lat.toFixed(2) + 's';
+  latMini.textContent = lat.toFixed(2) + 's';
+  if (lat < 1.0) { latEl.classList.add('fast'); latEl.classList.remove('slow'); }
+  else { latEl.classList.add('slow'); latEl.classList.remove('fast'); }
+}, 2400);
+
+// ============ INTERACTIONS ============
+let listening = false;
+window.toggleListening = () => {
+  listening = !listening;
+  const btn = document.getElementById('micBtn');
+  const pill = document.getElementById('statePill');
+  if (listening) { btn.classList.add('listening'); pill.classList.add('listening'); pill.textContent = 'Listening'; }
+  else           { btn.classList.remove('listening'); pill.classList.remove('listening'); pill.textContent = 'Idle'; }
+};
+
+window.toggleDrawer = () => {
+  const d = document.getElementById('drawer');
+  const b = document.getElementById('drawerBackdrop');
+  const t = document.getElementById('dashToggle');
+  const on = d.classList.toggle('on');
+  b.classList.toggle('on', on);
+  t.classList.toggle('on', on);
+};
+window.closeDrawer = () => {
+  document.getElementById('drawer').classList.remove('on');
+  document.getElementById('drawerBackdrop').classList.remove('on');
+  document.getElementById('dashToggle').classList.remove('on');
+};
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+</script>
+
+</body>
+</html>
