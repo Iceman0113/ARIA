@@ -101,3 +101,84 @@ html, body, #root {
   padding-left: 14px; border-left: 1px solid var(--border);
 }
 .presence-mark .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: tokpulse 2.4s ease-in-out infinite; }
+
+/* ============== MIC BAR ============== */
+.mic-bar {
+  position: fixed; bottom: 18px; left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 56px);
+  max-width: 1280px;
+  background: rgba(13,13,17,0.92);
+  border: 1px solid var(--border-2);
+  border-radius: 16px;
+  padding: 12px 18px;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto;
+  gap: 12px;
+  align-items: center;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 40px rgba(197,255,77,0.04);
+  z-index: 50;
+}
+.mic-button {
+  width: 40px; height: 40px;
+  border-radius: 11px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border-2);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-dim);
+  cursor: pointer;
+  flex: 0 0 40px;
+  transition: all 0.15s ease;
+}
+.mic-button:hover { color: var(--accent); border-color: var(--accent); }
+.mic-button.listening {
+  background: rgba(197,255,77,0.1);
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 24px rgba(197,255,77,0.25);
+}
+.mic-bar .input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  outline: none;
+}
+.mic-bar .input::placeholder { color: var(--text-mute); }
+.mic-bar .lat-mini {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-mute);
+  padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.04);
+}
+.mic-bar .lat-mini .v { color: var(--accent); }
+.mic-bar .state-pill {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-mute);
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-2);
+}
+.mic-bar .state-pill.listening {
+  color: var(--accent);
+  border-color: rgba(197,255,77,0.4);
+  background: rgba(197,255,77,0.05);
+}
+.dash-toggle {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em;
+  color: var(--text-dim);
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-2);
+  background: rgba(255,255,255,0.03);
+  cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+  text-transform: uppercase;
+  transition: all 0.15s ease;
+}
+.dash-toggle:hover { color: var(--accent); border-color: var(--accent); }
+.dash-toggle .arrow { font-size: 14px; transition: transform 0.2s ease; }
+.dash-toggle.on { color: var(--accent); border-color: var(--accent); background: rgba(197,255,77,0.06); }
+.dash-toggle.on .arrow { transform: rotate(180deg); }
