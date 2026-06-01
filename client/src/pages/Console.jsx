@@ -1,13 +1,12 @@
-import { useState } from 'react';
+import NeuralMap from '../neural-map/NeuralMap.jsx';
 import DashboardDrawer from '../dashboard/DashboardDrawer.jsx';
+import { MOCK_DATA } from '../neural-map/mockData.js';
 
 export default function Console({ drawerOpen, onCloseDrawer }) {
   return (
     <>
       <div className="stage" id="stage">
-        <div className="neural-map-placeholder">
-          Neural map — Phase B
-        </div>
+        <NeuralMap data={MOCK_DATA} workStates={{}} />
         <div className="vignette" />
       </div>
       <DashboardDrawer open={drawerOpen} onClose={onCloseDrawer}>
