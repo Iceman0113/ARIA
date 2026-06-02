@@ -69,4 +69,18 @@ describe('<MicBar>', () => {
     render(<MicBar {...defaults} state="thinking" heard="hey aria how are you doing" />);
     expect(screen.getByText('hey aria how are you doing')).toBeInTheDocument();
   });
+
+  it('reflects wake-word state on its toggle', () => {
+    const { rerender } = render(<MicBar {...defaults} wakeWord={false} />);
+    expect(screen.getByRole('button', { name: /wake word/i })).not.toHaveClass('on');
+    rerender(<MicBar {...defaults} wakeWord={true} />);
+    expect(screen.getByRole('button', { name: /wake word/i })).toHaveClass('on');
+  });
+
+  it('fires onToggleWakeWord when the wake-word toggle is clicked', () => {
+    const onToggleWakeWord = vi.fn();
+    render(<MicBar {...defaults} onToggleWakeWord={onToggleWakeWord} />);
+    fireEvent.click(screen.getByRole('button', { name: /wake word/i }));
+    expect(onToggleWakeWord).toHaveBeenCalledOnce();
+  });
 });

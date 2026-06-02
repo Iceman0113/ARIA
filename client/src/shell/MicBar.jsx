@@ -18,6 +18,8 @@ export default function MicBar({
   interim = '',
   sttError = '',
   heard = '',
+  wakeWord = false,
+  onToggleWakeWord = () => {},
 }) {
   const isListening = state === 'listening';
   const stateLabel  = STATE_LABEL[state] || 'Idle';
@@ -42,6 +44,16 @@ export default function MicBar({
           <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
           <line x1="12" y1="19" x2="12" y2="23"/>
         </svg>
+      </button>
+
+      <button
+        type="button"
+        className={`wake-toggle ${wakeWord ? 'on' : ''}`}
+        onClick={onToggleWakeWord}
+        aria-label="Wake word"
+        title={wakeWord ? 'Wake word ON — say "hey ARIA" hands-free' : 'Wake word OFF — click to enable hands-free'}
+      >
+        wake
       </button>
 
       <input

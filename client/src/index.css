@@ -173,6 +173,24 @@ html, body, #root {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .mic-bar .mic-transcript.heard { color: var(--text-dim); font-style: italic; }
+.mic-bar .wake-toggle {
+  flex: 0 0 auto;
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-mute);
+  background: transparent;
+  border: 1px solid var(--border-2);
+  border-radius: 4px;
+  padding: 5px 9px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.mic-bar .wake-toggle::before { content: "◦ "; }
+.mic-bar .wake-toggle.on {
+  color: var(--accent);
+  border-color: rgba(197,255,77,0.45);
+  background: rgba(197,255,77,0.06);
+}
+.mic-bar .wake-toggle.on::before { content: "● "; }
 .mic-bar .mic-error {
   flex: 1 1 auto; min-width: 0;
   font-family: var(--font-mono); font-size: 11px; line-height: 1.3;

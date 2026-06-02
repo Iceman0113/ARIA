@@ -209,6 +209,25 @@ function CofounderApp({ config }) {
     );
   }, []); // eslint-disable-line
 
+  // Enable wake-word ("hey ARIA") mode: persist it, drop convo auto-listen in
+  // favour of standby, and start listening for the phrase if idle.
+  const enableWakeWord = useCallback(() => {
+    setAlwaysOn(true);  localStorage.setItem(ALWAYSON_KEY, '1');  alwaysOnRef.current  = true;
+    setConvoMode(false); localStorage.setItem(CONVO_KEY, '0');    convoModeRef.current = false;
+  }, []);
+
+  const toggleWakeWord = useCallback(() => {
+    if (alwaysOnRef.current) {
+      setAlwaysOn(false); localStorage.setItem(ALWAYSON_KEY, '0'); alwaysOnRef.current = false;
+      wakeWord.stop();
+      setOrbState(s => (s === 'sleeping' ? 'idle' : s));
+    } else {
+      enableWakeWord();
+      setOrbState(s => (s === 'idle' ? 'sleeping' : s));
+      if (orbState === 'idle') enterSleeping();
+    }
+  }, [orbState, enableWakeWord, enterSleeping]);
+
   const returnToBase = useCallback(() => {
     if (convoModeRef.current) { setOrbState('idle'); setTimeout(() => startListeningRef.current?.(), 900); }
     else if (alwaysOnRef.current) { enterSleeping(); }
@@ -250,11 +269,20 @@ function CofounderApp({ config }) {
       onError:   (code) => setSttError(sttErrorMessage(code)),
     });
     setInterim('');
-    if (finalText.trim()) { setHeard(finalText.trim()); sendMessage(finalText.trim()); }
+    if (finalText.trim()) {
+      setHeard(finalText.trim());
+      if (!alwaysOnRef.current) enableWakeWord();   // auto-arm wake word after first voice use
+      sendMessage(finalText.trim());
+    }
     else returnToBase();
-  }, [sendMessage, returnToBase]);
+  }, [sendMessage, returnToBase, enableWakeWord]);
 
   useEffect(() => { startListeningRef.current = startListening; }, [startListening]);
+
+  // If wake-word mode was enabled in a previous session, resume standby on load.
+  useEffect(() => {
+    if (alwaysOn) enterSleeping();
+  }, []); // eslint-disable-line
 
   const handleMicClick = useCallback(() => {
     if (orbState === 'speaking')  { voice.cancelSpeaking(); returnToBase(); return; }
@@ -328,6 +356,8 @@ function CofounderApp({ config }) {
         interim={interim}
         sttError={sttError}
         heard={heard}
+        wakeWord={alwaysOn}
+        onToggleWakeWord={toggleWakeWord}
       />
     </>
   );
