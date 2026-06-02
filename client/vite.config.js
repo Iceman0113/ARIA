@@ -6,7 +6,11 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
-      '/api': 'http://localhost:3001',
+      '/api':         'http://localhost:3001',
+      '/neural-map':  'http://localhost:3001',
+      '/speak':       'http://localhost:3001',
+      '/memory':      'http://localhost:3001',
+      '/clients':     'http://localhost:3001',
     },
   },
 });
