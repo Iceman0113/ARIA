@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { ARIA_CORE_VS } from './shaders/ariaCore.vert.glsl.js';
 import { ARIA_CORE_FS } from './shaders/ariaCore.frag.glsl.js';
 import { ARIA_SHELL_VS, ARIA_SHELL_FS } from './shaders/ariaShell.frag.glsl.js';
@@ -44,7 +45,10 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
   const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 240);
   camera.position.set(0, 0.8, 15.5);
 
-  const controls = new OrbitControls(camera, canvas);
+  const labelRenderer = new CSS2DRenderer({ element: labelLayer });
+  labelRenderer.setSize(stage.clientWidth, stage.clientHeight);
+
+  const controls = new OrbitControls(camera, labelRenderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.07;
   controls.autoRotate = false;
@@ -280,6 +284,25 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
     growthTips[cat.id] = { group, coreSphere, halo, filaments, color: cat.color, data: cat };
   });
 
+  // ── CSS2D LABELS ─────────────────────────────────────────────
+  {
+    const div = document.createElement('div');
+    div.className = 'neural-label hub';
+    div.textContent = 'A·R·I·A';
+    const obj = new CSS2DObject(div);
+    obj.position.set(0, 1.55, 0);
+    coreMesh.add(obj);
+  }
+  cats.forEach((cat) => {
+    const div = document.createElement('div');
+    div.className = 'neural-label category';
+    div.innerHTML = `<span class="tick"></span>${cat.label.toUpperCase()}`;
+    div.style.color = cat.color;
+    const obj = new CSS2DObject(div);
+    obj.position.set(0, 0.22, 0);
+    growthTips[cat.id].group.add(obj);
+  });
+
   // ── WORK STATES + LEASH LINES ────────────────────────────────
   let workStates = createInitialWorkStates(cats.map(c => c.id));
   const leashes = {};
@@ -480,6 +503,7 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
     finalPass.uniforms.uResolution.value.set(w, h);
     pollenMat.uniforms.uPixelRatio.value = renderer.getPixelRatio();
     mistMat.uniforms.uPixelRatio.value   = renderer.getPixelRatio();
+    labelRenderer.setSize(w, h);
   }
   resize();
   const ro = new ResizeObserver(resize);
@@ -593,6 +617,7 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
     finalPass.uniforms.uTime.value = t;
     hoverCtl.update();
     composer.render();
+    labelRenderer.render(scene, camera);
   }
   animate();
 
