@@ -3,7 +3,7 @@ import NeuralMap from '../neural-map/NeuralMap.jsx';
 import DashboardDrawer from '../dashboard/DashboardDrawer.jsx';
 import { MOCK_DATA } from '../neural-map/mockData.js';
 
-export default function Console({ drawerOpen, onCloseDrawer, workStates }) {
+export default function Console({ drawerOpen, onCloseDrawer, workStates, refreshKey }) {
   const [data, setData] = useState(MOCK_DATA);
   const [loadError, setLoadError] = useState(null);
 
@@ -21,7 +21,7 @@ export default function Console({ drawerOpen, onCloseDrawer, workStates }) {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [refreshKey]);
 
   return (
     <>

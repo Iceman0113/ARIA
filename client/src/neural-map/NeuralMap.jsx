@@ -13,15 +13,29 @@ export default function NeuralMap({ data, workStates }) {
   // doesn't stack duplicates.
   useEffect(() => {
     if (!canvasRef.current) return;
-    sceneHandleRef.current = createScene({
+    const handle = createScene({
       canvas: canvasRef.current,
       labelLayer: labelLayerRef.current,
       tooltip: tooltipRef.current,
       data,
       workStates,
     });
+    sceneHandleRef.current = handle;
+
+    // Granular live updates pushed from App.jsx's WS handler as window events,
+    // so the scene mutates in place without a full rebuild.
+    const onFreshness = (e) => handle.setFreshness?.(e.detail.id, e.detail.freshness);
+    const onAdd       = (e) => handle.addLeaf?.(e.detail);
+    const onRemove    = (e) => handle.removeLeaf?.(e.detail.id);
+    window.addEventListener('aria:freshness',    onFreshness);
+    window.addEventListener('aria:node_added',   onAdd);
+    window.addEventListener('aria:node_removed', onRemove);
+
     return () => {
-      sceneHandleRef.current?.dispose();
+      window.removeEventListener('aria:freshness',    onFreshness);
+      window.removeEventListener('aria:node_added',   onAdd);
+      window.removeEventListener('aria:node_removed', onRemove);
+      handle.dispose();
       sceneHandleRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

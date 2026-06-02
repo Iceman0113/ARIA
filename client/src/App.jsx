@@ -43,6 +43,8 @@ function CofounderApp({ config }) {
   const [latency, setLatency]             = useState(0.74);
   const [convoMode, setConvoMode]         = useState(() => localStorage.getItem(CONVO_KEY) !== '0');
   const [alwaysOn, setAlwaysOn]           = useState(() => localStorage.getItem(ALWAYSON_KEY) === '1');
+  const [workStates, setWorkStates]       = useState({});
+  const [mapRefreshKey, setMapRefreshKey] = useState(0);
 
   // ── Refs ────────────────────────────────────────────────────────
   const wsRef        = useRef(null);
@@ -177,6 +179,21 @@ function CofounderApp({ config }) {
         speakText(msg.body);
         break;
       }
+      case 'agent_state':
+        setWorkStates(prev => ({ ...prev, [msg.slug]: { state: msg.state, updatedAt: Date.now() } }));
+        break;
+      case 'freshness_update':
+        window.dispatchEvent(new CustomEvent('aria:freshness', { detail: msg }));
+        break;
+      case 'node_added':
+        window.dispatchEvent(new CustomEvent('aria:node_added', { detail: msg.node }));
+        break;
+      case 'node_removed':
+        window.dispatchEvent(new CustomEvent('aria:node_removed', { detail: { id: msg.id } }));
+        break;
+      case 'map_refresh':
+        setMapRefreshKey(k => k + 1);
+        break;
     }
   }
 
@@ -265,7 +282,8 @@ function CofounderApp({ config }) {
         <Console
           drawerOpen={drawerOpen}
           onCloseDrawer={() => setDrawerOpen(false)}
-          workStates={{}}
+          workStates={workStates}
+          refreshKey={mapRefreshKey}
           messages={messages}
           alerts={alerts}
           metrics={metrics}

@@ -638,6 +638,36 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
         }
       });
     },
+    setFreshness(id, freshness) {
+      const dendrite = dendrites.find(d => d.toId === id);
+      if (dendrite) dendrite.mesh.material.uniforms.uFreshness.value = freshness;
+      const gt = growthTips[id];
+      if (gt) gt.data.freshness = freshness;
+    },
+    addLeaf(node) {
+      if (!node || !node.parent) return;
+      const ci = cats.findIndex(c => c.id === node.parent);
+      if (ci < 0) return;
+      // Find first free pollen slot in this cat's slice
+      const baseIdx = ci * POLLEN_PER_CAT;
+      let target = -1;
+      for (let i = 0; i < POLLEN_PER_CAT; i++) {
+        if (pollenSize[baseIdx + i] === 0) { target = baseIdx + i; break; }
+      }
+      if (target < 0) target = baseIdx; // overwrite first
+      pollenSize[target] = 9.0;
+      pollenGeom.attributes.aSize.needsUpdate = true;
+      leafToPollenIndex[node.id] = target;
+      leafNodes.push(node);
+      dataNodesById[node.id] = node;
+    },
+    removeLeaf(id) {
+      const gi = leafToPollenIndex[id];
+      if (gi == null) return;
+      pollenSize[gi] = 0;
+      pollenGeom.attributes.aSize.needsUpdate = true;
+      delete leafToPollenIndex[id];
+    },
     dispose() {
       hoverCtl.dispose();
       cancelAnimationFrame(rafId);
