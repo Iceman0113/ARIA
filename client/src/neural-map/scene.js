@@ -18,6 +18,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { POST_GRAIN_VS, POST_GRAIN_FS } from './shaders/postGrain.frag.glsl.js';
+import { createTooltip } from './tooltip.js';
 
 /**
  * createScene — mounts a Three.js scene into the given hosts.
@@ -460,6 +461,15 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
   composer.addPass(finalPass);
   composer.addPass(new OutputPass());
 
+  // ── HOVER TOOLTIP ────────────────────────────────────────────
+  const hoverables = [coreMesh, ...cats.map(c => growthTips[c.id].coreSphere)];
+  const dataNodesById = {};
+  data.nodes.forEach(n => { dataNodesById[n.id] = n; });
+  const hoverCtl = createTooltip({
+    stage, tooltip, camera,
+    hoverables, pollenGeom, leafNodes, leafToPollenIndex, dataNodesById,
+  });
+
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
     renderer.setSize(w, h, false);
@@ -581,6 +591,7 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
     camera.updateProjectionMatrix();
     controls.update();
     finalPass.uniforms.uTime.value = t;
+    hoverCtl.update();
     composer.render();
   }
   animate();
@@ -601,6 +612,7 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
       });
     },
     dispose() {
+      hoverCtl.dispose();
       cancelAnimationFrame(rafId);
       window.removeEventListener('mousemove', onMouseMove);
       ro.disconnect();
