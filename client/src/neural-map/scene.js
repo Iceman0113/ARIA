@@ -12,6 +12,12 @@ import { MIST_VS } from './shaders/mist.vert.glsl.js';
 import { MIST_FS } from './shaders/mist.frag.glsl.js';
 import { BACKDROP_VS, BACKDROP_FS } from './shaders/backdrop.frag.glsl.js';
 import { createInitialWorkStates, computeFloatOffset, advanceState } from './workStates.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { POST_GRAIN_VS, POST_GRAIN_FS } from './shaders/postGrain.frag.glsl.js';
 
 /**
  * createScene — mounts a Three.js scene into the given hosts.
@@ -429,11 +435,41 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
   controls.addEventListener('start', () => { dragging = true; });
   controls.addEventListener('end',   () => { setTimeout(() => { dragging = false; }, 1800); });
 
+  // ── POST-PROCESSING ──────────────────────────────────────────
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  const bloom = new UnrealBloomPass(
+    new THREE.Vector2(stage.clientWidth, stage.clientHeight),
+    0.78,   // strength
+    0.72,   // radius
+    0.15    // threshold
+  );
+  composer.addPass(bloom);
+  const finalPass = new ShaderPass({
+    uniforms: {
+      tDiffuse:    { value: null },
+      uTime:       { value: 0 },
+      uAberration: { value: 0.0028 },
+      uVignette:   { value: 1.10 },
+      uGrain:      { value: 0.040 },
+      uResolution: { value: new THREE.Vector2(stage.clientWidth, stage.clientHeight) },
+    },
+    vertexShader:   POST_GRAIN_VS,
+    fragmentShader: POST_GRAIN_FS,
+  });
+  composer.addPass(finalPass);
+  composer.addPass(new OutputPass());
+
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    composer.setSize(w, h);
+    bloom.setSize(w, h);
+    finalPass.uniforms.uResolution.value.set(w, h);
+    pollenMat.uniforms.uPixelRatio.value = renderer.getPixelRatio();
+    mistMat.uniforms.uPixelRatio.value   = renderer.getPixelRatio();
   }
   resize();
   const ro = new ResizeObserver(resize);
@@ -544,7 +580,8 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
     camera.fov = 42 + Math.sin(t * 0.22) * 0.9;
     camera.updateProjectionMatrix();
     controls.update();
-    renderer.render(scene, camera);
+    finalPass.uniforms.uTime.value = t;
+    composer.render();
   }
   animate();
 
