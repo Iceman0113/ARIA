@@ -64,4 +64,9 @@ describe('<MicBar>', () => {
     render(<MicBar {...defaults} state="listening" sttError="No microphone found" />);
     expect(screen.getByRole('alert')).toHaveTextContent('No microphone found');
   });
+
+  it('lingers the recognized sentence while thinking', () => {
+    render(<MicBar {...defaults} state="thinking" heard="hey aria how are you doing" />);
+    expect(screen.getByText('hey aria how are you doing')).toBeInTheDocument();
+  });
 });

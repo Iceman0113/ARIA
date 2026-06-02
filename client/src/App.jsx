@@ -43,6 +43,7 @@ function CofounderApp({ config }) {
   const [latency, setLatency]             = useState(0.74);
   const [interim, setInterim]             = useState('');
   const [sttError, setSttError]           = useState('');
+  const [heard, setHeard]                 = useState('');
   const [convoMode, setConvoMode]         = useState(() => localStorage.getItem(CONVO_KEY) !== '0');
   const [alwaysOn, setAlwaysOn]           = useState(() => localStorage.getItem(ALWAYSON_KEY) === '1');
   const [workStates, setWorkStates]       = useState({});
@@ -239,6 +240,7 @@ function CofounderApp({ config }) {
     if (!voice.supported) { setSttError('Voice input needs Chrome or Edge.'); return; }
     setSttError('');
     setInterim('');
+    setHeard('');
     setOrbState('listening');
     const finalText = await voice.startListening({
       onInterim: (t) => setInterim(t),
@@ -248,7 +250,7 @@ function CofounderApp({ config }) {
       onError:   (code) => setSttError(sttErrorMessage(code)),
     });
     setInterim('');
-    if (finalText.trim()) sendMessage(finalText.trim());
+    if (finalText.trim()) { setHeard(finalText.trim()); sendMessage(finalText.trim()); }
     else returnToBase();
   }, [sendMessage, returnToBase]);
 
@@ -325,6 +327,7 @@ function CofounderApp({ config }) {
         onToggleDrawer={() => setDrawerOpen(o => !o)}
         interim={interim}
         sttError={sttError}
+        heard={heard}
       />
     </>
   );
