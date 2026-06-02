@@ -265,6 +265,21 @@ function CofounderApp({ config }) {
   // ── Derived ─────────────────────────────────────────────────────
   const currentMrr = metrics?.mrr?.grossMrr ?? metrics?.revenue?.mrr ?? metrics?.currentMrr ?? metrics?.current_mrr ?? 1950;
 
+  const actions = (metrics?.actions || []).slice(0, 5).map((a, i) => ({
+    id: a.id || `a-${i}`,
+    title: a.title || a.label || 'Untitled action',
+    meta: a.meta || a.detail || '',
+    due: a.due || a.dueLabel || '',
+    urgency: a.urgency || (a.overdue ? 'hot' : a.dueWithinDays <= 1 ? 'soon' : a.dueWithinDays <= 3 ? 'today' : 'future'),
+  }));
+  const intel = alerts.slice(0, 4).map((a, i) => ({
+    id: a.id || `i-${i}`,
+    agent: a.agent || a.from || 'scout',
+    source: a.source || a.kind || 'signal',
+    msg: a.body || a.message || '',
+    time: a.timestamp ? relativeTime(a.timestamp) : 'now',
+  }));
+
   // ── Render ──────────────────────────────────────────────────────
   return (
     <>
@@ -284,12 +299,13 @@ function CofounderApp({ config }) {
           onCloseDrawer={() => setDrawerOpen(false)}
           workStates={workStates}
           refreshKey={mapRefreshKey}
-          messages={messages}
-          alerts={alerts}
-          metrics={metrics}
-          clients={clients}
           mrr={currentMrr}
           mrrTarget={MRR_TARGET}
+          spendToday={spend}
+          tokensToday={tokens}
+          avgLatency={latency}
+          actions={actions}
+          intel={intel}
         />
       )}
 
@@ -305,4 +321,12 @@ function CofounderApp({ config }) {
       />
     </>
   );
+}
+
+function relativeTime(ts) {
+  const sec = Math.max(1, Math.floor((Date.now() - ts) / 1000));
+  if (sec < 60)    return `${sec}s`;
+  if (sec < 3600)  return `${Math.floor(sec / 60)} min`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)}h`;
+  return `${Math.floor(sec / 86400)}d`;
 }

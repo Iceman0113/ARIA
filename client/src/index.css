@@ -470,3 +470,5 @@ html, body, #root {
 .intel-row .body .src::before { content: "◦ "; color: var(--accent); }
 .intel-row .body .msg { font-size: 13px; line-height: 1.5; color: var(--text-dim); }
 .intel-row .time { font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); white-space: nowrap; }
+
+.drawer-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; }

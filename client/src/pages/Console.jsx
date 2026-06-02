@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react';
 import NeuralMap from '../neural-map/NeuralMap.jsx';
 import DashboardDrawer from '../dashboard/DashboardDrawer.jsx';
+import KpiStrip from '../dashboard/KpiStrip.jsx';
+import ActionsPanel from '../dashboard/ActionsPanel.jsx';
+import IntelFeed from '../dashboard/IntelFeed.jsx';
 import { MOCK_DATA } from '../neural-map/mockData.js';
 
-export default function Console({ drawerOpen, onCloseDrawer, workStates, refreshKey }) {
+export default function Console({
+  drawerOpen, onCloseDrawer, workStates, refreshKey,
+  mrr, mrrTarget, spendToday, tokensToday, avgLatency,
+  actions, intel,
+}) {
   const [data, setData] = useState(MOCK_DATA);
   const [loadError, setLoadError] = useState(null);
 
@@ -28,13 +35,25 @@ export default function Console({ drawerOpen, onCloseDrawer, workStates, refresh
       <div className="stage" id="stage">
         <NeuralMap data={data} workStates={workStates || {}} />
         <div className="vignette" />
-        {loadError && (
-          <div className="stage-error">Using mock data — server fetch failed: {loadError}</div>
-        )}
+        {loadError && <div className="stage-error">Using mock data — server fetch failed: {loadError}</div>}
       </div>
       <DashboardDrawer open={drawerOpen} onClose={onCloseDrawer}>
-        <div style={{ color: 'var(--text-dim)', fontSize: 14 }}>
-          Dashboard content — Phase E
+        <KpiStrip
+          mrr={mrr}
+          mrrTarget={mrrTarget}
+          mrrWeekDelta={350}
+          pipelineOpen={8400}
+          pipelineActive={4}
+          pipelineHot={1}
+          followUpsTotal={3}
+          followUpsOverdue={2}
+          spendToday={spendToday}
+          tokensToday={tokensToday}
+          avgLatency={avgLatency}
+        />
+        <div className="drawer-grid">
+          <ActionsPanel actions={actions} />
+          <IntelFeed items={intel} />
         </div>
       </DashboardDrawer>
     </>
