@@ -1371,6 +1371,8 @@ Token system, fonts, top bar, mic bar, nav chips, empty drawer that opens/closes
 
 ## Phase B — Neural map static
 
+> ✅ **COMPLETE (2026-06-02).** All 14 tasks (B1–B14) implemented in `client/src/neural-map/`. Build clean, 33/33 tests green, scene verified in browser. Final fix: B11 orbit-drag was bound to the pointer-events:none label layer (dead drag) — rebound to the canvas so manual orbit works; ambient auto-drift + parallax remain default.
+
 Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. Inline mock DATA still — no server fetch yet. Each visual element is its own task. Imports are CDN-free; everything from the `three` package installed in Phase A.
 
 ### Task B1 — Mount an empty Three.js scene in React
@@ -1384,7 +1386,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
 
 **Steps:**
 
-- [ ] **Step 1** — Create failing test `/Users/randyjewell/ARIA/client/src/neural-map/NeuralMap.test.jsx`:
+- [x] **Step 1** — Create failing test `/Users/randyjewell/ARIA/client/src/neural-map/NeuralMap.test.jsx`:
   ```jsx
   import { describe, it, expect, vi } from 'vitest';
   import { render } from '@testing-library/react';
@@ -1415,9 +1417,9 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   });
   ```
 
-- [ ] **Step 2** — Run `npm test`. Expected: failure — modules don't exist.
+- [x] **Step 2** — Run `npm test`. Expected: failure — modules don't exist.
 
-- [ ] **Step 3** — Create `/Users/randyjewell/ARIA/client/src/neural-map/scene.js`:
+- [x] **Step 3** — Create `/Users/randyjewell/ARIA/client/src/neural-map/scene.js`:
   ```js
   import * as THREE from 'three';
   import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -1484,7 +1486,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   }
   ```
 
-- [ ] **Step 4** — Create `/Users/randyjewell/ARIA/client/src/neural-map/NeuralMap.jsx`:
+- [x] **Step 4** — Create `/Users/randyjewell/ARIA/client/src/neural-map/NeuralMap.jsx`:
   ```jsx
   import { useEffect, useRef } from 'react';
   import { createScene } from './scene.js';
@@ -1536,7 +1538,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   }
   ```
 
-- [ ] **Step 5** — Modify `/Users/randyjewell/ARIA/client/src/pages/Console.jsx` to mount NeuralMap with mock data (Phase B uses inline DATA, Phase C swaps in fetch):
+- [x] **Step 5** — Modify `/Users/randyjewell/ARIA/client/src/pages/Console.jsx` to mount NeuralMap with mock data (Phase B uses inline DATA, Phase C swaps in fetch):
   ```jsx
   import NeuralMap from '../neural-map/NeuralMap.jsx';
   import DashboardDrawer from '../dashboard/DashboardDrawer.jsx';
@@ -1559,7 +1561,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   }
   ```
 
-- [ ] **Step 6** — Create `/Users/randyjewell/ARIA/client/src/neural-map/mockData.js` (lifted verbatim from `aria-ui-v9-1.html` lines 652–693 — but using **spec-authoritative** sub-agent colors, not the lightened mockup hexes):
+- [x] **Step 6** — Create `/Users/randyjewell/ARIA/client/src/neural-map/mockData.js` (lifted verbatim from `aria-ui-v9-1.html` lines 652–693 — but using **spec-authoritative** sub-agent colors, not the lightened mockup hexes):
   ```js
   export const MOCK_DATA = {
     nodes: [
@@ -1614,7 +1616,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   });
   ```
 
-- [ ] **Step 7** — Append the tooltip + label-layer CSS to `/Users/randyjewell/ARIA/client/src/index.css` (copied verbatim from v9-1.html `#neural-tooltip`, `#label-layer`, `.neural-label`):
+- [x] **Step 7** — Append the tooltip + label-layer CSS to `/Users/randyjewell/ARIA/client/src/index.css` (copied verbatim from v9-1.html `#neural-tooltip`, `#label-layer`, `.neural-label`):
   ```css
   /* ============== NEURAL CANVAS / LABEL LAYER ============== */
   #neural-canvas { width: 100%; height: 100%; display: block; }
@@ -1709,11 +1711,11 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   #neural-tooltip .bar .fill { height: 100%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
   ```
 
-- [ ] **Step 8** — Run `npm test`. Expected: NeuralMap tests pass.
+- [x] **Step 8** — Run `npm test`. Expected: NeuralMap tests pass.
 
-- [ ] **Step 9** — Boot dev. Expected: black stage (still no scene contents — coming in B2). No console errors. Drag the canvas — OrbitControls swallows the drag (no orbit visible yet because nothing's in the scene, but no errors).
+- [x] **Step 9** — Boot dev. Expected: black stage (still no scene contents — coming in B2). No console errors. Drag the canvas — OrbitControls swallows the drag (no orbit visible yet because nothing's in the scene, but no errors).
 
-- [ ] **Step 10** — Commit:
+- [x] **Step 10** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/neural-map/ client/src/pages/Console.jsx client/src/index.css && git commit -m "Mount empty Three.js scene + OrbitControls + ResizeObserver"
   ```
@@ -1739,7 +1741,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
 
 **Steps:**
 
-- [ ] **Step 1** — Create `noise.glsl.js`:
+- [x] **Step 1** — Create `noise.glsl.js`:
   ```js
   // Simplex 3D noise — Ashima Arts / Stefan Gustavson
   export const NOISE_GLSL = /* glsl */`
@@ -1792,7 +1794,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   `;
   ```
 
-- [ ] **Step 2** — Create `ariaCore.vert.glsl.js`:
+- [x] **Step 2** — Create `ariaCore.vert.glsl.js`:
   ```js
   import { NOISE_GLSL } from './noise.glsl.js';
 
@@ -1820,7 +1822,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   `;
   ```
 
-- [ ] **Step 3** — Create `ariaCore.frag.glsl.js`:
+- [x] **Step 3** — Create `ariaCore.frag.glsl.js`:
   ```js
   export const ARIA_CORE_FS = /* glsl */`
     precision highp float;
@@ -1864,7 +1866,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   `;
   ```
 
-- [ ] **Step 4** — Create `ariaShell.frag.glsl.js`:
+- [x] **Step 4** — Create `ariaShell.frag.glsl.js`:
   ```js
   export const ARIA_SHELL_VS = /* glsl */`
     varying vec3 vN; varying vec3 vW;
@@ -1888,7 +1890,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   `;
   ```
 
-- [ ] **Step 5** — Create `dendrite.vert.glsl.js`:
+- [x] **Step 5** — Create `dendrite.vert.glsl.js`:
   ```js
   export const DENDRITE_VS = /* glsl */`
     varying vec2 vUv;
@@ -1901,7 +1903,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   `;
   ```
 
-- [ ] **Step 6** — Create `dendrite.frag.glsl.js`:
+- [x] **Step 6** — Create `dendrite.frag.glsl.js`:
   ```js
   export const DENDRITE_FS = /* glsl */`
     precision highp float;
@@ -1930,7 +1932,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   `;
   ```
 
-- [ ] **Step 7** — Create `filament.frag.glsl.js`:
+- [x] **Step 7** — Create `filament.frag.glsl.js`:
   ```js
   export const FILAMENT_VS = /* glsl */`
     varying float vAlong;
@@ -1950,7 +1952,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   `;
   ```
 
-- [ ] **Step 8** — Create `pollen.vert.glsl.js`:
+- [x] **Step 8** — Create `pollen.vert.glsl.js`:
   ```js
   export const POLLEN_VS = /* glsl */`
     attribute vec3 aColor;
@@ -1970,7 +1972,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   `;
   ```
 
-- [ ] **Step 9** — Create `pollen.frag.glsl.js`:
+- [x] **Step 9** — Create `pollen.frag.glsl.js`:
   ```js
   export const POLLEN_FS = /* glsl */`
     varying vec3 vColor;
@@ -1988,7 +1990,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   `;
   ```
 
-- [ ] **Step 10** — Create `mist.vert.glsl.js`:
+- [x] **Step 10** — Create `mist.vert.glsl.js`:
   ```js
   export const MIST_VS = /* glsl */`
     uniform float uTime; uniform float uPixelRatio;
@@ -2002,7 +2004,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   `;
   ```
 
-- [ ] **Step 11** — Create `mist.frag.glsl.js`:
+- [x] **Step 11** — Create `mist.frag.glsl.js`:
   ```js
   export const MIST_FS = /* glsl */`
     varying float vF;
@@ -2016,7 +2018,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   `;
   ```
 
-- [ ] **Step 12** — Create `backdrop.frag.glsl.js`:
+- [x] **Step 12** — Create `backdrop.frag.glsl.js`:
   ```js
   import { NOISE_GLSL } from './noise.glsl.js';
 
@@ -2049,7 +2051,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   `;
   ```
 
-- [ ] **Step 13** — Create `postGrain.frag.glsl.js`:
+- [x] **Step 13** — Create `postGrain.frag.glsl.js`:
   ```js
   export const POST_GRAIN_VS = /* glsl */`
     varying vec2 vUv;
@@ -2087,9 +2089,9 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   `;
   ```
 
-- [ ] **Step 14** — Run `npm test`. Expected: no new tests, no regressions.
+- [x] **Step 14** — Run `npm test`. Expected: no new tests, no regressions.
 
-- [ ] **Step 15** — Commit:
+- [x] **Step 15** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/neural-map/shaders/ client/src/neural-map/mockData.js && git commit -m "Extract all GLSL shaders into separate .glsl.js files"
   ```
@@ -2101,13 +2103,13 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
 
 **Steps:**
 
-- [ ] **Step 1** — Add imports at the top of `scene.js`:
+- [x] **Step 1** — Add imports at the top of `scene.js`:
   ```js
   import { ARIA_CORE_VS } from './shaders/ariaCore.vert.glsl.js';
   import { ARIA_CORE_FS } from './shaders/ariaCore.frag.glsl.js';
   ```
 
-- [ ] **Step 2** — After the `controls` block in `createScene`, add the core construction (right before `function resize()`):
+- [x] **Step 2** — After the `controls` block in `createScene`, add the core construction (right before `function resize()`):
   ```js
     // ── ARIA CORE ─────────────────────────────────────────────────
     const coreUniforms = {
@@ -2132,7 +2134,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
     scene.add(coreMesh);
   ```
 
-- [ ] **Step 3** — Update the animate loop to drive `uTime` and `uPulse`. Replace the current `function animate()` with:
+- [x] **Step 3** — Update the animate loop to drive `uTime` and `uPulse`. Replace the current `function animate()` with:
   ```js
     const clock = new THREE.Clock();
     let rafId;
@@ -2152,9 +2154,9 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
     animate();
   ```
 
-- [ ] **Step 4** — Boot dev. Open `http://localhost:5174`. Expected: visible displaced icosphere at center, breathing/iridescent. Drag camera — sphere stays at origin, view rotates around it. No console errors.
+- [x] **Step 4** — Boot dev. Open `http://localhost:5174`. Expected: visible displaced icosphere at center, breathing/iridescent. Drag camera — sphere stays at origin, view rotates around it. No console errors.
 
-- [ ] **Step 5** — Commit:
+- [x] **Step 5** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/neural-map/scene.js && git commit -m "Add ARIA core: displaced icosphere with iridescent fresnel shader"
   ```
@@ -2166,12 +2168,12 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
 
 **Steps:**
 
-- [ ] **Step 1** — Add imports:
+- [x] **Step 1** — Add imports:
   ```js
   import { ARIA_SHELL_VS, ARIA_SHELL_FS } from './shaders/ariaShell.frag.glsl.js';
   ```
 
-- [ ] **Step 2** — After the core block, add:
+- [x] **Step 2** — After the core block, add:
   ```js
     // ── OUTER SHELL ───────────────────────────────────────────────
     const shellMat = new THREE.ShaderMaterial({
@@ -2210,7 +2212,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
     scene.add(ariaWireframe2);
   ```
 
-- [ ] **Step 3** — In `animate()`, after `coreUniforms.uPulse.value = voicePulse;`, add:
+- [x] **Step 3** — In `animate()`, after `coreUniforms.uPulse.value = voicePulse;`, add:
   ```js
       shellMat.uniforms.uTime.value = t;
       emberMesh.scale.setScalar(1.0 + Math.sin(t * 2.3) * 0.08 + voicePulse * 0.15);
@@ -2220,9 +2222,9 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
       ariaWireframe2.rotation.z = Math.cos(t * 0.10) * 0.12;
   ```
 
-- [ ] **Step 4** — Boot dev. Expected: lime ember inside the iridescent core, faint translucent outer shell pulsing, two counter-rotating wireframe halos.
+- [x] **Step 4** — Boot dev. Expected: lime ember inside the iridescent core, faint translucent outer shell pulsing, two counter-rotating wireframe halos.
 
-- [ ] **Step 5** — Commit:
+- [x] **Step 5** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/neural-map/scene.js && git commit -m "Add ARIA outer shell, inner ember, two counter-rotating wireframe halos"
   ```
@@ -2234,7 +2236,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
 
 **Steps:**
 
-- [ ] **Step 1** — After the wireframe block, add (positions are deterministic, no Math.random for these):
+- [x] **Step 1** — After the wireframe block, add (positions are deterministic, no Math.random for these):
   ```js
     // ── CATEGORY POSITIONS (irregular sphere, not a flat ring) ────
     const cats = data.nodes.filter(n => n.type === 'category');
@@ -2258,9 +2260,9 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
     });
   ```
 
-- [ ] **Step 2** — Boot dev. Expected: no visual change yet — positions used in B6+.
+- [x] **Step 2** — Boot dev. Expected: no visual change yet — positions used in B6+.
 
-- [ ] **Step 3** — Commit:
+- [x] **Step 3** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/neural-map/scene.js && git commit -m "Compute category positions on irregular sphere"
   ```
@@ -2272,13 +2274,13 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
 
 **Steps:**
 
-- [ ] **Step 1** — Add imports:
+- [x] **Step 1** — Add imports:
   ```js
   import { DENDRITE_VS } from './shaders/dendrite.vert.glsl.js';
   import { DENDRITE_FS } from './shaders/dendrite.frag.glsl.js';
   ```
 
-- [ ] **Step 2** — After the category-positions block, add:
+- [x] **Step 2** — After the category-positions block, add:
   ```js
     // ── DENDRITES ─────────────────────────────────────────────────
     const dendriteUniforms = { uTime: { value: 0 }, uPulse: { value: 0 } };
@@ -2342,15 +2344,15 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
     });
   ```
 
-- [ ] **Step 3** — In `animate()`, after the wireframe rotations, add:
+- [x] **Step 3** — In `animate()`, after the wireframe rotations, add:
   ```js
       dendriteUniforms.uTime.value  = t;
       dendriteUniforms.uPulse.value = voicePulse;
   ```
 
-- [ ] **Step 4** — Boot dev. Expected: six curving tapered tubes emanating from ARIA, each in its sub-agent color, with energy pulses traveling outward along them.
+- [x] **Step 4** — Boot dev. Expected: six curving tapered tubes emanating from ARIA, each in its sub-agent color, with energy pulses traveling outward along them.
 
-- [ ] **Step 5** — Commit:
+- [x] **Step 5** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/neural-map/scene.js && git commit -m "Add 6 dendrites: cubic Bezier tubes with tapered radius + traveling pulses"
   ```
@@ -2362,12 +2364,12 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
 
 **Steps:**
 
-- [ ] **Step 1** — Add imports:
+- [x] **Step 1** — Add imports:
   ```js
   import { FILAMENT_VS, FILAMENT_FS } from './shaders/filament.frag.glsl.js';
   ```
 
-- [ ] **Step 2** — After the dendrites block, add:
+- [x] **Step 2** — After the dendrites block, add:
   ```js
     // ── GROWTH TIPS (anemone filaments) ───────────────────────────
     const growthTips = {};
@@ -2456,9 +2458,9 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
     });
   ```
 
-- [ ] **Step 3** — Boot dev. Expected: six anemone-like radial bursts of filaments at the dendrite tips, each in its sub-agent color, with shimmering tip embers.
+- [x] **Step 3** — Boot dev. Expected: six anemone-like radial bursts of filaments at the dendrite tips, each in its sub-agent color, with shimmering tip embers.
 
-- [ ] **Step 4** — Commit:
+- [x] **Step 4** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/neural-map/scene.js && git commit -m "Add growth tips: 14 anemone filaments + tip embers per category"
   ```
@@ -2472,7 +2474,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
 
 **Steps:**
 
-- [ ] **Step 1** — Create failing test `/Users/randyjewell/ARIA/client/src/neural-map/workStates.test.js`:
+- [x] **Step 1** — Create failing test `/Users/randyjewell/ARIA/client/src/neural-map/workStates.test.js`:
   ```js
   import { describe, it, expect } from 'vitest';
   import * as THREE from 'three';
@@ -2522,9 +2524,9 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   });
   ```
 
-- [ ] **Step 2** — Run `npm test`. Expected: failure — module doesn't exist.
+- [x] **Step 2** — Run `npm test`. Expected: failure — module doesn't exist.
 
-- [ ] **Step 3** — Create `/Users/randyjewell/ARIA/client/src/neural-map/workStates.js`:
+- [x] **Step 3** — Create `/Users/randyjewell/ARIA/client/src/neural-map/workStates.js`:
   ```js
   import * as THREE from 'three';
 
@@ -2579,14 +2581,14 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   }
   ```
 
-- [ ] **Step 4** — Run `npm test`. Expected: all workStates tests pass.
+- [x] **Step 4** — Run `npm test`. Expected: all workStates tests pass.
 
-- [ ] **Step 5** — In `scene.js`, add import:
+- [x] **Step 5** — In `scene.js`, add import:
   ```js
   import { createInitialWorkStates, computeFloatOffset, advanceState } from './workStates.js';
   ```
 
-- [ ] **Step 6** — After the growth-tips block, add:
+- [x] **Step 6** — After the growth-tips block, add:
   ```js
     // ── WORK STATES + LEASH LINES ────────────────────────────────
     let workStates = createInitialWorkStates(cats.map(c => c.id));
@@ -2608,7 +2610,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
     cats.forEach(c => { lastTipPositions[c.id] = nodePositions[c.id].clone(); });
   ```
 
-- [ ] **Step 7** — In `animate()`, after the dendrite uniform updates, add the per-category tip update loop:
+- [x] **Step 7** — In `animate()`, after the dendrite uniform updates, add the per-category tip update loop:
   ```js
       cats.forEach((cat, i) => {
         const tip  = growthTips[cat.id];
@@ -2652,7 +2654,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
       });
   ```
 
-- [ ] **Step 8** — Add a `setWorkStates` method to the returned handle (so Phase D can push real states without rebuilding the scene):
+- [x] **Step 8** — Add a `setWorkStates` method to the returned handle (so Phase D can push real states without rebuilding the scene):
   ```js
     return {
       setWorkStates(next) {
@@ -2678,9 +2680,9 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
     };
   ```
 
-- [ ] **Step 9** — Boot dev. Expected: gentle bob on all categories; Beacon detaches, orbits ARIA in a Lissajous path, leash line pulses, returns home after 8s, sits 2s, repeats.
+- [x] **Step 9** — Boot dev. Expected: gentle bob on all categories; Beacon detaches, orbits ARIA in a Lissajous path, leash line pulses, returns home after 8s, sits 2s, repeats.
 
-- [ ] **Step 10** — Commit:
+- [x] **Step 10** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/neural-map/workStates.js client/src/neural-map/workStates.test.js client/src/neural-map/scene.js && git commit -m "Add work-state machine + Lissajous float + pulsing leash lines"
   ```
@@ -2692,13 +2694,13 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
 
 **Steps:**
 
-- [ ] **Step 1** — Add imports:
+- [x] **Step 1** — Add imports:
   ```js
   import { POLLEN_VS } from './shaders/pollen.vert.glsl.js';
   import { POLLEN_FS } from './shaders/pollen.frag.glsl.js';
   ```
 
-- [ ] **Step 2** — After the work-states block, add:
+- [x] **Step 2** — After the work-states block, add:
   ```js
     // ── POLLEN (leaf particles) ──────────────────────────────────
     const POLLEN_PER_CAT = 90;
@@ -2761,7 +2763,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
     scene.add(pollen);
   ```
 
-- [ ] **Step 3** — In `animate()`, after the cats forEach, add:
+- [x] **Step 3** — In `animate()`, after the cats forEach, add:
   ```js
       const arr = pollenGeom.attributes.position.array;
       for (let ci = 0; ci < cats.length; ci++) {
@@ -2784,9 +2786,9 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
       pollenMat.uniforms.uTime.value = t;
   ```
 
-- [ ] **Step 4** — Boot dev. Expected: swarming colored particles around each growth tip, color matches parent sub-agent.
+- [x] **Step 4** — Boot dev. Expected: swarming colored particles around each growth tip, color matches parent sub-agent.
 
-- [ ] **Step 5** — Commit:
+- [x] **Step 5** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/neural-map/scene.js && git commit -m "Add pollen: 540-particle THREE.Points cloud with curl-noise drift"
   ```
@@ -2798,14 +2800,14 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
 
 **Steps:**
 
-- [ ] **Step 1** — Add imports:
+- [x] **Step 1** — Add imports:
   ```js
   import { MIST_VS } from './shaders/mist.vert.glsl.js';
   import { MIST_FS } from './shaders/mist.frag.glsl.js';
   import { BACKDROP_VS, BACKDROP_FS } from './shaders/backdrop.frag.glsl.js';
   ```
 
-- [ ] **Step 2** — After the pollen block, add the mist:
+- [x] **Step 2** — After the pollen block, add the mist:
   ```js
     // ── MIST (ambient atmospheric drift) ─────────────────────────
     const MIST_N = 220;
@@ -2872,7 +2874,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
     }
   ```
 
-- [ ] **Step 3** — In `animate()`, after pollen update, add:
+- [x] **Step 3** — In `animate()`, after pollen update, add:
   ```js
       const ma = mistGeom.attributes.position.array;
       for (let i = 0; i < MIST_N; i++) {
@@ -2888,9 +2890,9 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
       backdropMat.uniforms.uTime.value = t;
   ```
 
-- [ ] **Step 4** — Boot dev. Expected: deep purple → blue nebula behind everything, sparse white stars far back, gentle lime mist drifting through midground.
+- [x] **Step 4** — Boot dev. Expected: deep purple → blue nebula behind everything, sparse white stars far back, gentle lime mist drifting through midground.
 
-- [ ] **Step 5** — Commit:
+- [x] **Step 5** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/neural-map/scene.js && git commit -m "Add atmosphere: mist drift + backdrop nebula + starfield"
   ```
@@ -2902,7 +2904,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
 
 **Steps:**
 
-- [ ] **Step 1** — After the starfield block, add:
+- [x] **Step 1** — After the starfield block, add:
   ```js
     // ── CAMERA CHOREOGRAPHY ──────────────────────────────────────
     const parallaxTarget = new THREE.Vector2(0, 0);
@@ -2918,7 +2920,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
     controls.addEventListener('end',   () => { setTimeout(() => { dragging = false; }, 1800); });
   ```
 
-- [ ] **Step 2** — In `animate()`, before `controls.update();`, add:
+- [x] **Step 2** — In `animate()`, before `controls.update();`, add:
   ```js
       const ox = Math.sin(t * 0.06) * 2.2 + Math.sin(t * 0.025) * 0.8;
       const oy = Math.sin(t * 0.05 + 1.0) * 0.55;
@@ -2931,7 +2933,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
       camera.updateProjectionMatrix();
   ```
 
-- [ ] **Step 3** — Update `dispose()` to remove the mousemove listener:
+- [x] **Step 3** — Update `dispose()` to remove the mousemove listener:
   ```js
       dispose() {
         cancelAnimationFrame(rafId);
@@ -2942,9 +2944,9 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
       },
   ```
 
-- [ ] **Step 4** — Boot dev. Expected: camera drifts in a slow figure-eight; FOV breathes; moving the mouse subtly shifts the view. Click-drag overrides — when released, drift resumes after ~1.8s.
+- [x] **Step 4** — Boot dev. Expected: camera drifts in a slow figure-eight; FOV breathes; moving the mouse subtly shifts the view. Click-drag overrides — when released, drift resumes after ~1.8s.
 
-- [ ] **Step 5** — Commit:
+- [x] **Step 5** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/neural-map/scene.js && git commit -m "Add camera choreography: Bezier drift, breathing FOV, mouse parallax"
   ```
@@ -2956,7 +2958,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
 
 **Steps:**
 
-- [ ] **Step 1** — Add imports at the top:
+- [x] **Step 1** — Add imports at the top:
   ```js
   import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
   import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -2966,7 +2968,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   import { POST_GRAIN_VS, POST_GRAIN_FS } from './shaders/postGrain.frag.glsl.js';
   ```
 
-- [ ] **Step 2** — After the camera-choreography block, add:
+- [x] **Step 2** — After the camera-choreography block, add:
   ```js
     // ── POST-PROCESSING ──────────────────────────────────────────
     const composer = new EffectComposer(renderer);
@@ -2994,7 +2996,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
     composer.addPass(new OutputPass());
   ```
 
-- [ ] **Step 3** — Update `resize()`:
+- [x] **Step 3** — Update `resize()`:
   ```js
     function resize() {
       const w = stage.clientWidth, h = stage.clientHeight;
@@ -3009,15 +3011,15 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
     }
   ```
 
-- [ ] **Step 4** — In `animate()`, replace `renderer.render(scene, camera);` with:
+- [x] **Step 4** — In `animate()`, replace `renderer.render(scene, camera);` with:
   ```js
       finalPass.uniforms.uTime.value = t;
       composer.render();
   ```
 
-- [ ] **Step 5** — Boot dev. Expected: bright elements bloom (ARIA core, embers, filament tips), slight chromatic aberration toward screen edges, gentle vignette, subtle film grain.
+- [x] **Step 5** — Boot dev. Expected: bright elements bloom (ARIA core, embers, filament tips), slight chromatic aberration toward screen edges, gentle vignette, subtle film grain.
 
-- [ ] **Step 6** — Commit:
+- [x] **Step 6** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/neural-map/scene.js && git commit -m "Add post-processing: UnrealBloom + chromatic aberration + vignette + grain"
   ```
@@ -3030,7 +3032,7 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
 
 **Steps:**
 
-- [ ] **Step 1** — Create `/Users/randyjewell/ARIA/client/src/neural-map/tooltip.js`:
+- [x] **Step 1** — Create `/Users/randyjewell/ARIA/client/src/neural-map/tooltip.js`:
   ```js
   import * as THREE from 'three';
 
@@ -3120,12 +3122,12 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
   }
   ```
 
-- [ ] **Step 2** — In `scene.js`, add import:
+- [x] **Step 2** — In `scene.js`, add import:
   ```js
   import { createTooltip } from './tooltip.js';
   ```
 
-- [ ] **Step 3** — After the post-processing block, add:
+- [x] **Step 3** — After the post-processing block, add:
   ```js
     // ── HOVER TOOLTIP ────────────────────────────────────────────
     const hoverables = [coreMesh, ...cats.map(c => growthTips[c.id].coreSphere)];
@@ -3137,16 +3139,16 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
     });
   ```
 
-- [ ] **Step 4** — In `animate()`, before `composer.render()`, add:
+- [x] **Step 4** — In `animate()`, before `composer.render()`, add:
   ```js
       hoverCtl.update();
   ```
 
-- [ ] **Step 5** — Update `dispose()` to include `hoverCtl.dispose();`.
+- [x] **Step 5** — Update `dispose()` to include `hoverCtl.dispose();`.
 
-- [ ] **Step 6** — Boot dev. Expected: hovering ARIA's core shows her tooltip; hovering any growth-tip core sphere shows that sub-agent's tooltip; mousing close to a pollen leaf shows the leaf's tooltip.
+- [x] **Step 6** — Boot dev. Expected: hovering ARIA's core shows her tooltip; hovering any growth-tip core sphere shows that sub-agent's tooltip; mousing close to a pollen leaf shows the leaf's tooltip.
 
-- [ ] **Step 7** — Commit:
+- [x] **Step 7** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/neural-map/tooltip.js client/src/neural-map/scene.js && git commit -m "Add hover tooltip: raycaster for meshes + screen-space proximity for leaves"
   ```
@@ -3158,28 +3160,28 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
 
 **Steps:**
 
-- [ ] **Step 1** — Add import:
+- [x] **Step 1** — Add import:
   ```js
   import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
   ```
 
-- [ ] **Step 2** — After the OrbitControls block, add:
+- [x] **Step 2** — After the OrbitControls block, add:
   ```js
     const labelRenderer = new CSS2DRenderer({ element: labelLayer });
     labelRenderer.setSize(stage.clientWidth, stage.clientHeight);
   ```
 
-- [ ] **Step 3** — Update OrbitControls to use the label layer for event capture (so the labels don't swallow drags):
+- [x] **Step 3** — Update OrbitControls to use the label layer for event capture (so the labels don't swallow drags):
   ```js
     const controls = new OrbitControls(camera, labelRenderer.domElement);
   ```
 
-- [ ] **Step 4** — In `resize()`, add:
+- [x] **Step 4** — In `resize()`, add:
   ```js
       labelRenderer.setSize(w, h);
   ```
 
-- [ ] **Step 5** — After the growth-tips block, add labels:
+- [x] **Step 5** — After the growth-tips block, add labels:
   ```js
     // ── CSS2D LABELS ─────────────────────────────────────────────
     {
@@ -3201,14 +3203,14 @@ Replace the placeholder with the full Three.js scene from `aria-ui-v9-1.html`. I
     });
   ```
 
-- [ ] **Step 6** — In `animate()`, after `composer.render()`, add:
+- [x] **Step 6** — In `animate()`, after `composer.render()`, add:
   ```js
       labelRenderer.render(scene, camera);
   ```
 
-- [ ] **Step 7** — Boot dev. Expected: "A·R·I·A" label floats above the core; each growth tip has its agent name in its color.
+- [x] **Step 7** — Boot dev. Expected: "A·R·I·A" label floats above the core; each growth tip has its agent name in its color.
 
-- [ ] **Step 8** — Commit:
+- [x] **Step 8** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/neural-map/scene.js && git commit -m "Add CSS2D labels for ARIA hub + 6 sub-agent categories"
   ```
@@ -3227,7 +3229,7 @@ Replace the inline `MOCK_DATA` with a server-fetched payload built from Supabase
 
 **Steps:**
 
-- [ ] **Step 1** — Create failing test `/Users/randyjewell/ARIA/server/src/test/neural-map.test.js`:
+- [x] **Step 1** — Create failing test `/Users/randyjewell/ARIA/server/src/test/neural-map.test.js`:
   ```js
   import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -3331,9 +3333,9 @@ Replace the inline `MOCK_DATA` with a server-fetched payload built from Supabase
   }
   ```
 
-- [ ] **Step 2** — Run `cd /Users/randyjewell/ARIA/server && npm test`. Expected: failure — module `../neural-map.js` not found.
+- [x] **Step 2** — Run `cd /Users/randyjewell/ARIA/server && npm test`. Expected: failure — module `../neural-map.js` not found.
 
-- [ ] **Step 3** — Create `/Users/randyjewell/ARIA/server/src/neural-map.js`:
+- [x] **Step 3** — Create `/Users/randyjewell/ARIA/server/src/neural-map.js`:
   ```js
   import { getSupabase, getTenantId } from './supabase.js';
 
@@ -3435,9 +3437,9 @@ Replace the inline `MOCK_DATA` with a server-fetched payload built from Supabase
   }
   ```
 
-- [ ] **Step 4** — Run `cd /Users/randyjewell/ARIA/server && npm test`. Expected: all 5 neural-map tests pass.
+- [x] **Step 4** — Run `cd /Users/randyjewell/ARIA/server && npm test`. Expected: all 5 neural-map tests pass.
 
-- [ ] **Step 5** — Commit:
+- [x] **Step 5** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add server/src/neural-map.js server/src/test/neural-map.test.js && git commit -m "Add buildNeuralMap: Supabase-backed nodes with graceful Factory degrade"
   ```
@@ -3449,12 +3451,12 @@ Replace the inline `MOCK_DATA` with a server-fetched payload built from Supabase
 
 **Steps:**
 
-- [ ] **Step 1** — Add the import after the existing imports in `server/src/index.js`:
+- [x] **Step 1** — Add the import after the existing imports in `server/src/index.js`:
   ```js
   import { buildNeuralMap } from './neural-map.js';
   ```
 
-- [ ] **Step 2** — Add the route after `app.get('/health', ...)`:
+- [x] **Step 2** — Add the route after `app.get('/health', ...)`:
   ```js
   app.get('/neural-map', async (_, res) => {
     try {
@@ -3467,13 +3469,13 @@ Replace the inline `MOCK_DATA` with a server-fetched payload built from Supabase
   });
   ```
 
-- [ ] **Step 3** — Boot server: `cd server && npm run dev`. Then in another terminal:
+- [x] **Step 3** — Boot server: `cd server && npm run dev`. Then in another terminal:
   ```bash
   curl -s http://localhost:3001/neural-map | head -c 400
   ```
   Expected: JSON starting `{"nodes":[{"id":"aria","type":"hub",...`.
 
-- [ ] **Step 4** — Commit:
+- [x] **Step 4** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add server/src/index.js && git commit -m "Add GET /neural-map REST endpoint"
   ```
@@ -3485,7 +3487,7 @@ Replace the inline `MOCK_DATA` with a server-fetched payload built from Supabase
 
 **Steps:**
 
-- [ ] **Step 1** — Replace `client/vite.config.js`:
+- [x] **Step 1** — Replace `client/vite.config.js`:
   ```js
   import { defineConfig } from 'vite';
   import react from '@vitejs/plugin-react';
@@ -3505,7 +3507,7 @@ Replace the inline `MOCK_DATA` with a server-fetched payload built from Supabase
   });
   ```
 
-- [ ] **Step 2** — Commit:
+- [x] **Step 2** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/vite.config.js && git commit -m "Proxy /neural-map and existing routes through Vite to server:3001"
   ```
@@ -3517,7 +3519,7 @@ Replace the inline `MOCK_DATA` with a server-fetched payload built from Supabase
 
 **Steps:**
 
-- [ ] **Step 1** — Replace `/Users/randyjewell/ARIA/client/src/pages/Console.jsx`:
+- [x] **Step 1** — Replace `/Users/randyjewell/ARIA/client/src/pages/Console.jsx`:
   ```jsx
   import { useEffect, useState } from 'react';
   import NeuralMap from '../neural-map/NeuralMap.jsx';
@@ -3563,7 +3565,7 @@ Replace the inline `MOCK_DATA` with a server-fetched payload built from Supabase
   }
   ```
 
-- [ ] **Step 2** — Append to `client/src/index.css`:
+- [x] **Step 2** — Append to `client/src/index.css`:
   ```css
   .stage-error {
     position: absolute; top: 22px; left: 28px; z-index: 6;
@@ -3575,7 +3577,7 @@ Replace the inline `MOCK_DATA` with a server-fetched payload built from Supabase
   }
   ```
 
-- [ ] **Step 3** — In `App.jsx`, update the `<Console />` block to pass `workStates={{}}` (next phase wires the real value):
+- [x] **Step 3** — In `App.jsx`, update the `<Console />` block to pass `workStates={{}}` (next phase wires the real value):
   ```jsx
         {activeRoute === 'console' && (
           <Console
@@ -3586,9 +3588,9 @@ Replace the inline `MOCK_DATA` with a server-fetched payload built from Supabase
         )}
   ```
 
-- [ ] **Step 4** — Boot both servers. Open `http://localhost:5174`. Expected: Network tab shows `GET /neural-map → 200`. The scene renders with whatever real data Supabase returned. Stop the server, refresh — expected: scene falls back to MOCK_DATA and an amber pill in the top-left shows the error.
+- [x] **Step 4** — Boot both servers. Open `http://localhost:5174`. Expected: Network tab shows `GET /neural-map → 200`. The scene renders with whatever real data Supabase returned. Stop the server, refresh — expected: scene falls back to MOCK_DATA and an amber pill in the top-left shows the error.
 
-- [ ] **Step 5** — Commit:
+- [x] **Step 5** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/pages/Console.jsx client/src/App.jsx client/src/index.css && git commit -m "Fetch /neural-map on mount; fall back to mock on error"
   ```
