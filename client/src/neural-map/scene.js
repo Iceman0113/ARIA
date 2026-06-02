@@ -416,6 +416,19 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
     })));
   }
 
+  // ── CAMERA CHOREOGRAPHY ──────────────────────────────────────
+  const parallaxTarget = new THREE.Vector2(0, 0);
+  const onMouseMove = (e) => {
+    const x = (e.clientX / window.innerWidth)  * 2 - 1;
+    const y = (e.clientY / window.innerHeight) * 2 - 1;
+    parallaxTarget.set(x * 0.45, -y * 0.30);
+  };
+  window.addEventListener('mousemove', onMouseMove);
+
+  let dragging = false;
+  controls.addEventListener('start', () => { dragging = true; });
+  controls.addEventListener('end',   () => { setTimeout(() => { dragging = false; }, 1800); });
+
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
     renderer.setSize(w, h, false);
@@ -521,6 +534,15 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
     mistMat.uniforms.uTime.value     = t;
     backdropMat.uniforms.uTime.value = t;
 
+    const ox = Math.sin(t * 0.06) * 2.2 + Math.sin(t * 0.025) * 0.8;
+    const oy = Math.sin(t * 0.05 + 1.0) * 0.55;
+    const oz = Math.cos(t * 0.06) * 1.0 + Math.cos(t * 0.022) * 0.6;
+    const desired = new THREE.Vector3(ox, 0.8 + oy, 15.5 + oz);
+    desired.x += parallaxTarget.x * 0.8;
+    desired.y += parallaxTarget.y * 0.5;
+    if (!dragging) camera.position.lerp(desired, 0.012);
+    camera.fov = 42 + Math.sin(t * 0.22) * 0.9;
+    camera.updateProjectionMatrix();
     controls.update();
     renderer.render(scene, camera);
   }
@@ -543,6 +565,7 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
     },
     dispose() {
       cancelAnimationFrame(rafId);
+      window.removeEventListener('mousemove', onMouseMove);
       ro.disconnect();
       controls.dispose();
       renderer.dispose();
