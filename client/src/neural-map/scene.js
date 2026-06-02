@@ -6,14 +6,15 @@ import { ARIA_SHELL_VS, ARIA_SHELL_FS } from './shaders/ariaShell.frag.glsl.js';
 import { DENDRITE_VS } from './shaders/dendrite.vert.glsl.js';
 import { DENDRITE_FS } from './shaders/dendrite.frag.glsl.js';
 import { FILAMENT_VS, FILAMENT_FS } from './shaders/filament.frag.glsl.js';
+import { createInitialWorkStates, computeFloatOffset, advanceState } from './workStates.js';
 
 /**
  * createScene — mounts a Three.js scene into the given hosts.
- * Returns a { dispose() } handle for unmounting.
+ * Returns a { setWorkStates(), dispose() } handle for unmounting and state updates.
  *
  * Phase B fills this out element by element. Phase B1 is just a black scene.
  */
-export function createScene({ canvas, labelLayer, tooltip, data, workStates }) {
+export function createScene({ canvas, labelLayer, tooltip, data }) {
   const stage = canvas.parentElement;
 
   const renderer = new THREE.WebGLRenderer({
@@ -267,6 +268,25 @@ export function createScene({ canvas, labelLayer, tooltip, data, workStates }) {
     growthTips[cat.id] = { group, coreSphere, halo, filaments, color: cat.color, data: cat };
   });
 
+  // ── WORK STATES + LEASH LINES ────────────────────────────────
+  let workStates = createInitialWorkStates(cats.map(c => c.id));
+  const leashes = {};
+  cats.forEach(cat => {
+    const lGeom = new THREE.BufferGeometry();
+    lGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(2 * 3), 3));
+    const line = new THREE.Line(lGeom, new THREE.LineBasicMaterial({
+      color: new THREE.Color(cat.color),
+      transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    }));
+    scene.add(line);
+    leashes[cat.id] = line;
+  });
+
+  const lastTipPositions = {};
+  cats.forEach(c => { lastTipPositions[c.id] = nodePositions[c.id].clone(); });
+
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
     renderer.setSize(w, h, false);
@@ -298,12 +318,67 @@ export function createScene({ canvas, labelLayer, tooltip, data, workStates }) {
     dendriteUniforms.uTime.value  = t;
     dendriteUniforms.uPulse.value = voicePulse;
 
+    cats.forEach((cat, i) => {
+      const tip  = growthTips[cat.id];
+      const base = nodePositions[cat.id];
+      const dx = Math.sin(t * 0.42 + i * 1.7) * 0.08;
+      const dy = Math.cos(t * 0.35 + i * 2.1) * 0.06;
+      const dz = Math.sin(t * 0.30 + i * 0.9) * 0.07;
+      const anchor = base.clone().add(new THREE.Vector3(dx, dy, dz));
+
+      const ws = workStates[cat.id];
+      advanceState(ws, t, cat.id);
+      const tSince = t - ws.stateStartTime;
+      const floatOffset = computeFloatOffset(ws, tSince);
+      const np = anchor.clone().add(floatOffset);
+      tip.group.position.copy(np);
+
+      const outwardBase = base.clone().normalize();
+      const lookTarget = np.clone().add(outwardBase);
+      tip.group.lookAt(lookTarget);
+      tip.group.rotateZ(t * 0.05 + i * 0.3);
+
+      const haloPulse = ws.state === 'working'
+        ? 1.0 + Math.sin(t * 3.2 + i) * 0.18
+        : 1.0 + Math.sin(t * 1.1 + i) * 0.07;
+      tip.halo.scale.setScalar(haloPulse);
+      tip.coreSphere.material.opacity = 0.7 + cat.freshness * 0.25 + voicePulse * 0.05 + (ws.state === 'working' ? 0.1 : 0);
+
+      const leash = leashes[cat.id];
+      const lpos = leash.geometry.attributes.position.array;
+      lpos[0] = anchor.x; lpos[1] = anchor.y; lpos[2] = anchor.z;
+      lpos[3] = np.x;     lpos[4] = np.y;     lpos[5] = np.z;
+      leash.geometry.attributes.position.needsUpdate = true;
+      if (ws.state === 'working') {
+        leash.material.opacity = 0.32 + 0.28 * Math.abs(Math.sin(t * 5));
+      } else if (ws.state === 'returning') {
+        leash.material.opacity = 0.45 * (1 - Math.min(1, tSince / 1.6));
+      } else {
+        leash.material.opacity = 0;
+      }
+      lastTipPositions[cat.id] = np;
+    });
+
     controls.update();
     renderer.render(scene, camera);
   }
   animate();
 
   return {
+    setWorkStates(next) {
+      Object.keys(next).forEach(slug => {
+        if (!workStates[slug]) return;
+        const incomingState = next[slug].state;
+        if (incomingState && incomingState !== workStates[slug].state) {
+          if (incomingState === 'returning') {
+            const tSince = clock.getElapsedTime() - workStates[slug].stateStartTime;
+            workStates[slug].floatStartOffset.copy(computeFloatOffset(workStates[slug], tSince));
+          }
+          workStates[slug].state = incomingState;
+          workStates[slug].stateStartTime = clock.getElapsedTime();
+        }
+      });
+    },
     dispose() {
       cancelAnimationFrame(rafId);
       ro.disconnect();
