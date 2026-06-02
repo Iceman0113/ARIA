@@ -413,3 +413,41 @@ html, body, #root {
   font-family: var(--font-mono); font-size: 10px;
   color: var(--text-dim); margin-top: 4px;
 }
+
+/* ============== DRAWER PANELS ============== */
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 26px;
+  backdrop-filter: blur(8px);
+}
+.panel-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 16px; padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.panel-title { font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.panel-title .ann { color: var(--text-mute); font-weight: 400; font-size: 12px; margin-left: 6px; }
+.panel-aside { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); }
+
+.action-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px; align-items: center;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.action-row:last-child { border-bottom: none; }
+.action-row .marker {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 8px var(--accent);
+}
+.action-row .marker.hot    { background: var(--hot);  box-shadow: 0 0 8px var(--hot); }
+.action-row .marker.soon   { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+.action-row .marker.future { background: rgba(255,255,255,0.15); box-shadow: none; }
+.action-row .body .title { font-size: 14px; color: var(--text); margin-bottom: 2px; }
+.action-row .body .meta  { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); }
+.action-row .due { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); text-align: right; white-space: nowrap; }
+.action-row .due.hot  { color: var(--hot); }
+.action-row .due.soon { color: var(--warn); }
