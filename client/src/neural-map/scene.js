@@ -6,6 +6,8 @@ import { ARIA_SHELL_VS, ARIA_SHELL_FS } from './shaders/ariaShell.frag.glsl.js';
 import { DENDRITE_VS } from './shaders/dendrite.vert.glsl.js';
 import { DENDRITE_FS } from './shaders/dendrite.frag.glsl.js';
 import { FILAMENT_VS, FILAMENT_FS } from './shaders/filament.frag.glsl.js';
+import { POLLEN_VS } from './shaders/pollen.vert.glsl.js';
+import { POLLEN_FS } from './shaders/pollen.frag.glsl.js';
 import { createInitialWorkStates, computeFloatOffset, advanceState } from './workStates.js';
 
 /**
@@ -287,6 +289,66 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
   const lastTipPositions = {};
   cats.forEach(c => { lastTipPositions[c.id] = nodePositions[c.id].clone(); });
 
+  // ── POLLEN (leaf particles) ──────────────────────────────────
+  const POLLEN_PER_CAT = 90;
+  const totalPollen = cats.length * POLLEN_PER_CAT;
+  const pollenPos    = new Float32Array(totalPollen * 3);
+  const pollenColor  = new Float32Array(totalPollen * 3);
+  const pollenSize   = new Float32Array(totalPollen);
+  const pollenPhase  = new Float32Array(totalPollen);
+  const pollenRadius = new Float32Array(totalPollen);
+  const pollenTheta  = new Float32Array(totalPollen);
+  const pollenPhi    = new Float32Array(totalPollen);
+  const pollenSpeed  = new Float32Array(totalPollen);
+
+  const leafNodes = data.nodes.filter(n => n.type === 'leaf');
+  const leafToPollenIndex = {};
+
+  cats.forEach((cat, ci) => {
+    const pos = nodePositions[cat.id];
+    const col = new THREE.Color(cat.color);
+    const leaves = leafNodes.filter(l => l.parent === cat.id);
+    for (let i = 0; i < POLLEN_PER_CAT; i++) {
+      const gi = ci * POLLEN_PER_CAT + i;
+      if (i < leaves.length) leafToPollenIndex[leaves[i].id] = gi;
+      const seed = ((ci * 47 + i * 31) % 1000) / 1000;
+      const seedB = ((ci * 53 + i * 23) % 1000) / 1000;
+      const seedC = ((ci * 19 + i * 11) % 1000) / 1000;
+      const r  = 0.45 + seed * 0.95;
+      const th = seedB * Math.PI * 2;
+      const ph = (seedC - 0.5) * Math.PI * 0.85;
+      pollenPos[gi*3]   = pos.x + Math.cos(th) * Math.cos(ph) * r;
+      pollenPos[gi*3+1] = pos.y + Math.sin(ph) * r;
+      pollenPos[gi*3+2] = pos.z + Math.sin(th) * Math.cos(ph) * r;
+      pollenColor[gi*3]   = col.r;
+      pollenColor[gi*3+1] = col.g;
+      pollenColor[gi*3+2] = col.b;
+      pollenSize[gi]   = 6.0 + seed * 7.0;
+      pollenPhase[gi]  = seedB * Math.PI * 2;
+      pollenRadius[gi] = r;
+      pollenTheta[gi]  = th;
+      pollenPhi[gi]    = ph;
+      pollenSpeed[gi]  = 0.20 + seedC * 0.45;
+    }
+  });
+
+  const pollenGeom = new THREE.BufferGeometry();
+  pollenGeom.setAttribute('position', new THREE.BufferAttribute(pollenPos, 3));
+  pollenGeom.setAttribute('aColor',   new THREE.BufferAttribute(pollenColor, 3));
+  pollenGeom.setAttribute('aSize',    new THREE.BufferAttribute(pollenSize, 1));
+  pollenGeom.setAttribute('aPhase',   new THREE.BufferAttribute(pollenPhase, 1));
+
+  const pollenMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uPixelRatio: { value: renderer.getPixelRatio() } },
+    vertexShader:   POLLEN_VS,
+    fragmentShader: POLLEN_FS,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const pollen = new THREE.Points(pollenGeom, pollenMat);
+  scene.add(pollen);
+
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
     renderer.setSize(w, h, false);
@@ -358,6 +420,26 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
       }
       lastTipPositions[cat.id] = np;
     });
+
+    const arr = pollenGeom.attributes.position.array;
+    for (let ci = 0; ci < cats.length; ci++) {
+      const cat = cats[ci];
+      const tipPos = lastTipPositions[cat.id];
+      for (let i = 0; i < POLLEN_PER_CAT; i++) {
+        const gi = ci * POLLEN_PER_CAT + i;
+        const speed = pollenSpeed[gi];
+        pollenTheta[gi] += 0.0025 * speed;
+        pollenPhi[gi]   += Math.sin(t * 0.5 + pollenPhase[gi]) * 0.0006;
+        const r  = pollenRadius[gi] + Math.sin(t * (0.8 + speed) + pollenPhase[gi]) * 0.07;
+        const th = pollenTheta[gi];
+        const ph = pollenPhi[gi];
+        arr[gi*3]   = tipPos.x + Math.cos(th) * Math.cos(ph) * r;
+        arr[gi*3+1] = tipPos.y + Math.sin(ph) * r;
+        arr[gi*3+2] = tipPos.z + Math.sin(th) * Math.cos(ph) * r;
+      }
+    }
+    pollenGeom.attributes.position.needsUpdate = true;
+    pollenMat.uniforms.uTime.value = t;
 
     controls.update();
     renderer.render(scene, camera);
