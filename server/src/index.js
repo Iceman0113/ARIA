@@ -13,6 +13,7 @@ import { getClients, upsertClient, deleteClient } from './clients.js';
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 import crypto from 'crypto';
 import { buildAuthorizeUrl, exchangeCodeForTokens, fetchMemberUrn, fetchAdminOrganizations, saveAuth, loadAuth } from './linkedin.js';
+import { buildNeuralMap } from './neural-map.js';
 
 const app = express();
 app.use(cors({ origin: ['http://localhost:5174', 'http://localhost:5173'] }));
@@ -105,6 +106,16 @@ wss.on('connection', async (ws) => {
 // ── REST endpoints ────────────────────────────────────────────────
 
 app.get('/health', (_, res) => res.json({ ok: true, clients: connectedClients.size }));
+
+app.get('/neural-map', async (_, res) => {
+  try {
+    const payload = await buildNeuralMap();
+    res.json(payload);
+  } catch (err) {
+    console.error('[neural-map] error:', err.message);
+    res.status(500).json({ error: 'Could not build neural map' });
+  }
+});
 
 app.get('/memory', async (_, res) => {
   try { res.json(await getMemory()); }
