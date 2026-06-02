@@ -451,3 +451,22 @@ html, body, #root {
 .action-row .due { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); text-align: right; white-space: nowrap; }
 .action-row .due.hot  { color: var(--hot); }
 .action-row .due.soon { color: var(--warn); }
+
+.intel-row {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.intel-row:last-child { border-bottom: none; }
+.intel-row .av {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--border-2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 8px;
+  color: rgba(255,255,255,0.6);
+}
+.intel-row .body .src { font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); margin-bottom: 2px; }
+.intel-row .body .src::before { content: "◦ "; color: var(--accent); }
+.intel-row .body .msg { font-size: 13px; line-height: 1.5; color: var(--text-dim); }
+.intel-row .time { font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); white-space: nowrap; }
