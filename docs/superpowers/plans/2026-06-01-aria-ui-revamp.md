@@ -3608,7 +3608,7 @@ Backend pushes work-state changes; the scene reacts without React tearing down t
 
 **Steps:**
 
-- [ ] **Step 1** — Add to imports at the top of `server/src/agent.js`:
+- [x] **Step 1** — Add to imports at the top of `server/src/agent.js`:
   ```js
   import { broadcast } from './index.js';
 
@@ -3620,7 +3620,7 @@ Backend pushes work-state changes; the scene reacts without React tearing down t
   };
   ```
 
-- [ ] **Step 2** — Inside `runAgent`, find:
+- [x] **Step 2** — Inside `runAgent`, find:
   ```js
   const result = await callTool(tool.name, tool.input, onEvent);
   ```
@@ -3632,9 +3632,9 @@ Backend pushes work-state changes; the scene reacts without React tearing down t
   if (slug) broadcast({ type: 'agent_state', slug, state: 'returning' });
   ```
 
-- [ ] **Step 3** — Boot both servers. Send a message like "scout, who's hiring in Carmel". Tail the server log. Expected: log entries for `tool_call delegate_to_scout` are bracketed by the agent_state broadcasts.
+- [x] **Step 3** — Boot both servers. Send a message like "scout, who's hiring in Carmel". Tail the server log. Expected: log entries for `tool_call delegate_to_scout` are bracketed by the agent_state broadcasts.
 
-- [ ] **Step 4** — Commit:
+- [x] **Step 4** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add server/src/agent.js && git commit -m "Emit agent_state working/returning around delegate_to_* tool calls"
   ```
@@ -3648,13 +3648,13 @@ Backend pushes work-state changes; the scene reacts without React tearing down t
 
 **Steps:**
 
-- [ ] **Step 1** — In `App.jsx`, add state:
+- [x] **Step 1** — In `App.jsx`, add state:
   ```jsx
   const [workStates, setWorkStates]       = useState({});
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
   ```
 
-- [ ] **Step 2** — In `App.jsx` `handleServerEvent`, add cases (place inside the existing `switch`):
+- [x] **Step 2** — In `App.jsx` `handleServerEvent`, add cases (place inside the existing `switch`):
   ```js
         case 'agent_state':
           setWorkStates(prev => ({ ...prev, [msg.slug]: { state: msg.state, updatedAt: Date.now() } }));
@@ -3673,7 +3673,7 @@ Backend pushes work-state changes; the scene reacts without React tearing down t
           break;
   ```
 
-- [ ] **Step 3** — Pass `workStates` and `mapRefreshKey` to Console (replaces the placeholder in C4):
+- [x] **Step 3** — Pass `workStates` and `mapRefreshKey` to Console (replaces the placeholder in C4):
   ```jsx
         {activeRoute === 'console' && (
           <Console
@@ -3685,9 +3685,9 @@ Backend pushes work-state changes; the scene reacts without React tearing down t
         )}
   ```
 
-- [ ] **Step 4** — In `Console.jsx`, add `refreshKey` to the props destructure and change the fetch `useEffect`'s dep array from `[]` to `[refreshKey]`.
+- [x] **Step 4** — In `Console.jsx`, add `refreshKey` to the props destructure and change the fetch `useEffect`'s dep array from `[]` to `[refreshKey]`.
 
-- [ ] **Step 5** — Modify `NeuralMap.jsx` to forward window events into the scene handle:
+- [x] **Step 5** — Modify `NeuralMap.jsx` to forward window events into the scene handle:
   ```jsx
     useEffect(() => {
       if (!canvasRef.current) return;
@@ -3718,7 +3718,7 @@ Backend pushes work-state changes; the scene reacts without React tearing down t
     }, []);
   ```
 
-- [ ] **Step 6** — In `scene.js`, extend the returned handle to support setFreshness / addLeaf / removeLeaf (replace the existing return block):
+- [x] **Step 6** — In `scene.js`, extend the returned handle to support setFreshness / addLeaf / removeLeaf (replace the existing return block):
   ```js
     return {
       setWorkStates(next) {
@@ -3776,16 +3776,16 @@ Backend pushes work-state changes; the scene reacts without React tearing down t
     };
   ```
 
-- [ ] **Step 7** — Now propagate React-side `workStates` into the scene. Modify the existing `useEffect` in `NeuralMap.jsx` that watches `workStates` to call `setWorkStates`. The post-D1 version already has this; double-check it exists:
+- [x] **Step 7** — Now propagate React-side `workStates` into the scene. Modify the existing `useEffect` in `NeuralMap.jsx` that watches `workStates` to call `setWorkStates`. The post-D1 version already has this; double-check it exists:
   ```jsx
     useEffect(() => {
       sceneHandleRef.current?.setWorkStates?.(workStates);
     }, [workStates]);
   ```
 
-- [ ] **Step 8** — Boot both servers. Type "scout, search for MSPs in Greenwood". Expected: within ~1s, Scout's tip detaches from its anchor and starts a Lissajous orbit. A pulsing lime-green leash line stretches from anchor → tip. When Scout's tool result comes back, the tip eases home over 1.6s and the leash fades to 0.
+- [x] **Step 8** — Boot both servers. Type "scout, search for MSPs in Greenwood". Expected: within ~1s, Scout's tip detaches from its anchor and starts a Lissajous orbit. A pulsing lime-green leash line stretches from anchor → tip. When Scout's tool result comes back, the tip eases home over 1.6s and the leash fades to 0.
 
-- [ ] **Step 9** — Commit:
+- [x] **Step 9** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/App.jsx client/src/pages/Console.jsx client/src/neural-map/NeuralMap.jsx client/src/neural-map/scene.js && git commit -m "Wire WebSocket: agent_state, freshness_update, node_added/removed, map_refresh"
   ```
