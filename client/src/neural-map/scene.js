@@ -48,7 +48,9 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
   const labelRenderer = new CSS2DRenderer({ element: labelLayer });
   labelRenderer.setSize(stage.clientWidth, stage.clientHeight);
 
-  const controls = new OrbitControls(camera, labelRenderer.domElement);
+  // Bind to the canvas (pointer-events:auto), NOT the label layer
+  // (#label-layer is pointer-events:none, so drags never reached it).
+  const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true;
   controls.dampingFactor = 0.07;
   controls.autoRotate = false;
@@ -643,6 +645,10 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
       ro.disconnect();
       controls.dispose();
       renderer.dispose();
+      // CSS2DRenderer appends each label as a child of #label-layer but has no
+      // teardown of its own — clear them so a remount (incl. StrictMode's
+      // mount→dispose→mount) doesn't stack a second set of labels.
+      labelLayer.replaceChildren();
     },
   };
 }
