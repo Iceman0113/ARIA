@@ -8,6 +8,9 @@ import { DENDRITE_FS } from './shaders/dendrite.frag.glsl.js';
 import { FILAMENT_VS, FILAMENT_FS } from './shaders/filament.frag.glsl.js';
 import { POLLEN_VS } from './shaders/pollen.vert.glsl.js';
 import { POLLEN_FS } from './shaders/pollen.frag.glsl.js';
+import { MIST_VS } from './shaders/mist.vert.glsl.js';
+import { MIST_FS } from './shaders/mist.frag.glsl.js';
+import { BACKDROP_VS, BACKDROP_FS } from './shaders/backdrop.frag.glsl.js';
 import { createInitialWorkStates, computeFloatOffset, advanceState } from './workStates.js';
 
 /**
@@ -349,6 +352,70 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
   const pollen = new THREE.Points(pollenGeom, pollenMat);
   scene.add(pollen);
 
+  // ── MIST (ambient atmospheric drift) ─────────────────────────
+  const MIST_N = 220;
+  const mistGeom = new THREE.BufferGeometry();
+  const mistPos  = new Float32Array(MIST_N * 3);
+  const mistVel  = [];
+  for (let i = 0; i < MIST_N; i++) {
+    const seedA = ((i * 71) % 1000) / 1000;
+    const seedB = ((i * 53) % 1000) / 1000;
+    const seedC = ((i * 37) % 1000) / 1000;
+    const r  = 10 + seedA * 24;
+    const th = seedB * Math.PI * 2;
+    const ph = Math.acos(2 * seedC - 1);
+    mistPos[i*3]   = r * Math.sin(ph) * Math.cos(th);
+    mistPos[i*3+1] = r * Math.cos(ph) * 0.55;
+    mistPos[i*3+2] = r * Math.sin(ph) * Math.sin(th);
+    mistVel.push([
+      ((((i * 7) % 100) / 100) - 0.5) * 0.004,
+      ((((i * 13) % 100) / 100) - 0.5) * 0.0025,
+      ((((i * 17) % 100) / 100) - 0.5) * 0.004,
+    ]);
+  }
+  mistGeom.setAttribute('position', new THREE.BufferAttribute(mistPos, 3));
+  const mistMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uPixelRatio: { value: renderer.getPixelRatio() } },
+    vertexShader:   MIST_VS,
+    fragmentShader: MIST_FS,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  scene.add(new THREE.Points(mistGeom, mistMat));
+
+  // ── NEBULA BACKDROP (inside-out sphere) ──────────────────────
+  const backdropMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 } },
+    vertexShader:   BACKDROP_VS,
+    fragmentShader: BACKDROP_FS,
+    side: THREE.BackSide,
+    depthWrite: false,
+  });
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(85, 32, 32), backdropMat));
+
+  // ── STARFIELD (1600 distant points) ──────────────────────────
+  {
+    const N = 1600;
+    const g = new THREE.BufferGeometry();
+    const a = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      const seedA = ((i * 91) % 1000) / 1000;
+      const seedB = ((i * 67) % 1000) / 1000;
+      const seedC = ((i * 41) % 1000) / 1000;
+      const r  = 45 + seedA * 55;
+      const th = seedB * Math.PI * 2;
+      const ph = Math.acos(2 * seedC - 1);
+      a[i*3]   = r * Math.sin(ph) * Math.cos(th);
+      a[i*3+1] = r * Math.cos(ph);
+      a[i*3+2] = r * Math.sin(ph) * Math.sin(th);
+    }
+    g.setAttribute('position', new THREE.BufferAttribute(a, 3));
+    scene.add(new THREE.Points(g, new THREE.PointsMaterial({
+      color: 0xffffff, size: 0.08, sizeAttenuation: true, transparent: true, opacity: 0.8,
+    })));
+  }
+
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
     renderer.setSize(w, h, false);
@@ -440,6 +507,19 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
     }
     pollenGeom.attributes.position.needsUpdate = true;
     pollenMat.uniforms.uTime.value = t;
+
+    const ma = mistGeom.attributes.position.array;
+    for (let i = 0; i < MIST_N; i++) {
+      const v = mistVel[i];
+      ma[i*3] += v[0]; ma[i*3+1] += v[1]; ma[i*3+2] += v[2];
+      const R = 30;
+      if (ma[i*3]   >  R)     ma[i*3]   = -R; if (ma[i*3]   < -R)     ma[i*3]   =  R;
+      if (ma[i*3+1] >  R*0.7) ma[i*3+1] = -R*0.7; if (ma[i*3+1] < -R*0.7) ma[i*3+1] = R*0.7;
+      if (ma[i*3+2] >  R)     ma[i*3+2] = -R; if (ma[i*3+2] < -R)     ma[i*3+2] =  R;
+    }
+    mistGeom.attributes.position.needsUpdate = true;
+    mistMat.uniforms.uTime.value     = t;
+    backdropMat.uniforms.uTime.value = t;
 
     controls.update();
     renderer.render(scene, camera);
