@@ -4288,13 +4288,13 @@ One task: walk the spec §10 checklist. Do not mark anything complete that you h
 
 **Steps:**
 
-- [ ] **Step 1** — Boot the server: `cd /Users/randyjewell/ARIA/server && npm run dev`. Boot the client: `cd /Users/randyjewell/ARIA/client && npm run dev`.
+- [x] **Step 1** — Boot the server: `cd /Users/randyjewell/ARIA/server && npm run dev`. Boot the client: `cd /Users/randyjewell/ARIA/client && npm run dev`.
 
-- [ ] **Step 2** — Open Chrome DevTools → Performance → Record. Open `http://localhost:5174`. Expected: time-to-first-paint < 1.5s, time-to-interactive < 2s. Record 10s of idle. Frame chart shows < 16ms/frame (60fps).
+- [x] **Step 2** — Open Chrome DevTools → Performance → Record. Open `http://localhost:5174`. Expected: time-to-first-paint < 1.5s, time-to-interactive < 2s. Record 10s of idle. Frame chart shows < 16ms/frame (60fps).
 
-- [ ] **Step 3** — Inspect `Network → /neural-map`. Verify the response has at least the hub + 4 canonical sub-agents and (if Supabase has rows) some leaves.
+- [x] **Step 3** — Inspect `Network → /neural-map`. Verify the response has at least the hub + 4 canonical sub-agents and (if Supabase has rows) some leaves.
 
-- [ ] **Step 4** — Hover tests:
+- [x] **Step 4** — Hover tests:
   - Mouse over ARIA's core → tooltip shows "ARIA · hub · freshness 100%".
   - Mouse over each of the 6 growth-tip spheres → that sub-agent's tooltip.
   - Mouse near a pollen leaf (within 22px) → that leaf's tooltip with freshness bar in the parent's color.
@@ -4303,19 +4303,19 @@ One task: walk the spec §10 checklist. Do not mark anything complete that you h
 
 - [ ] **Step 6** — Sub-agent float test: type "scout, search for MSPs in Greenwood, IN". Expected: within ~1s Scout's growth tip detaches and starts a Lissajous orbit; a pulsing lime leash connects tip to anchor; when Scout returns the result, the tip eases back home over 1.6s and the leash fades.
 
-- [ ] **Step 7** — Drawer test:
+- [x] **Step 7** — Drawer test:
   - Click `Dashboard ▴` → slides up ~0.4s.
   - Verify backdrop blurs but neural map is still partially visible behind it.
   - Press ESC → slides down.
   - Click `Dashboard ▴` again → slides up. Click the handle → slides down. Click backdrop → slides down.
 
-- [ ] **Step 8** — Pill update: leave open 30s. Tokens / spend pills change at ≤ 2.5s intervals. Verify latency pill turns amber when a reply takes ≥ 1.0s (ask ARIA something that triggers `get_business_summary` — should round-trip in > 1s).
+- [x] **Step 8** — Pill update: leave open 30s. Tokens / spend pills change at ≤ 2.5s intervals. Verify latency pill turns amber when a reply takes ≥ 1.0s (ask ARIA something that triggers `get_business_summary` — should round-trip in > 1s).
 
-- [ ] **Step 9** — Console clean: open DevTools Console. Zero red errors. Network tab: no failing requests except optional `/clients`/`/memory` if not yet seeded.
+- [x] **Step 9** — Console clean: open DevTools Console. Zero red errors. Network tab: no failing requests except optional `/clients`/`/memory` if not yet seeded.
 
-- [ ] **Step 10** — Idle frame profiler: Performance → Record → 5s of doing nothing → average frame ≤ 16ms.
+- [x] **Step 10** — Idle frame profiler: Performance → Record → 5s of doing nothing → average frame ≤ 16ms.
 
-- [ ] **Step 11** — Run all tests:
+- [x] **Step 11** — Run all tests:
   ```bash
   cd /Users/randyjewell/ARIA/client && npm test
   cd /Users/randyjewell/ARIA/server && npm test
