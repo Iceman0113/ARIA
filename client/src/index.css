@@ -390,3 +390,26 @@ html, body, #root {
   border: 1px solid rgba(242,176,78,0.3);
   padding: 6px 10px; border-radius: 6px;
 }
+
+/* ============== DRAWER KPI STRIP ============== */
+.drawer-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+.drawer-kpi {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.drawer-kpi .label {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em;
+  color: var(--text-mute); text-transform: uppercase; margin-bottom: 8px;
+}
+.drawer-kpi .label::before { content: "◦ "; color: var(--accent); }
+.drawer-kpi .val {
+  font-family: var(--font-display); font-size: 22px; font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.drawer-kpi .val.lime { color: var(--accent); }
+.drawer-kpi .delta {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-dim); margin-top: 4px;
+}
