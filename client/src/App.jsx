@@ -41,6 +41,8 @@ function CofounderApp({ config }) {
   const [tokens, setTokens]               = useState(12800);
   const [spend, setSpend]                 = useState(0.42);
   const [latency, setLatency]             = useState(0.74);
+  const [interim, setInterim]             = useState('');
+  const [sttError, setSttError]           = useState('');
   const [convoMode, setConvoMode]         = useState(() => localStorage.getItem(CONVO_KEY) !== '0');
   const [alwaysOn, setAlwaysOn]           = useState(() => localStorage.getItem(ALWAYSON_KEY) === '1');
   const [workStates, setWorkStates]       = useState({});
@@ -234,15 +236,18 @@ function CofounderApp({ config }) {
   }, [sendMessage]); // eslint-disable-line
 
   const startListening = useCallback(async () => {
-    if (!voice.supported) return;
+    if (!voice.supported) { setSttError('Voice input needs Chrome or Edge.'); return; }
+    setSttError('');
+    setInterim('');
     setOrbState('listening');
     const finalText = await voice.startListening({
-      onInterim: () => {},
-      onFinal:   () => {},
+      onInterim: (t) => setInterim(t),
+      onFinal:   (t) => setInterim(t),
       onLevel:   () => {},
-      onEnd:     () => {},
-      onError:   () => {},
+      onEnd:     () => setInterim(''),
+      onError:   (code) => setSttError(sttErrorMessage(code)),
     });
+    setInterim('');
     if (finalText.trim()) sendMessage(finalText.trim());
     else returnToBase();
   }, [sendMessage, returnToBase]);
@@ -318,9 +323,29 @@ function CofounderApp({ config }) {
         onMicClick={handleMicClick}
         onSubmit={handleTextSubmit}
         onToggleDrawer={() => setDrawerOpen(o => !o)}
+        interim={interim}
+        sttError={sttError}
       />
     </>
   );
+}
+
+function sttErrorMessage(code) {
+  switch (code) {
+    case 'not-allowed':
+    case 'service-not-allowed':
+      return 'Mic blocked — allow the microphone for localhost in Chrome (address-bar icon) and macOS Settings → Privacy → Microphone.';
+    case 'no-speech':
+      return "Didn't catch that — try speaking again.";
+    case 'audio-capture':
+      return 'No microphone found — check your input device.';
+    case 'network':
+      return 'Speech recognition network error — Chrome STT needs an internet connection.';
+    case 'aborted':
+      return '';
+    default:
+      return `Voice input error: ${code}`;
+  }
 }
 
 function relativeTime(ts) {

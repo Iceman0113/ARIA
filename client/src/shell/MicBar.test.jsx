@@ -49,4 +49,19 @@ describe('<MicBar>', () => {
     rerender(<MicBar {...defaults} drawerOpen={true} />);
     expect(screen.getByRole('button', { name: /toggle dashboard/i })).toHaveClass('on');
   });
+
+  it('shows the live interim transcript while listening', () => {
+    render(<MicBar {...defaults} state="listening" interim="search for msps in greenwood" />);
+    expect(screen.getByText('search for msps in greenwood')).toBeInTheDocument();
+  });
+
+  it('surfaces an STT error message when sttError is set', () => {
+    render(<MicBar {...defaults} sttError="Mic blocked — allow microphone for localhost in Chrome" />);
+    expect(screen.getByRole('alert')).toHaveTextContent(/Mic blocked/i);
+  });
+
+  it('prioritizes the STT error over the state pill label', () => {
+    render(<MicBar {...defaults} state="listening" sttError="No microphone found" />);
+    expect(screen.getByRole('alert')).toHaveTextContent('No microphone found');
+  });
 });

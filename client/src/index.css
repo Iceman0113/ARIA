@@ -166,6 +166,18 @@ html, body, #root {
   border-color: rgba(197,255,77,0.4);
   background: rgba(197,255,77,0.05);
 }
+.mic-bar .mic-transcript {
+  flex: 1 1 auto; min-width: 0;
+  font-family: var(--font-body); font-size: 14px;
+  color: var(--accent);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mic-bar .mic-error {
+  flex: 1 1 auto; min-width: 0;
+  font-family: var(--font-mono); font-size: 11px; line-height: 1.3;
+  color: var(--warn);
+  white-space: normal;
+}
 .dash-toggle {
   font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em;
   color: var(--text-dim);

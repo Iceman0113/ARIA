@@ -15,9 +15,12 @@ export default function MicBar({
   onToggleDrawer,
   textValue,
   onTextChange,
+  interim = '',
+  sttError = '',
 }) {
   const isListening = state === 'listening';
   const stateLabel  = STATE_LABEL[state] || 'Idle';
+  const showInterim = isListening && !sttError && interim.trim().length > 0;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -45,6 +48,12 @@ export default function MicBar({
         value={textValue}
         onChange={(e) => onTextChange(e.target.value)}
       />
+
+      {sttError ? (
+        <div className="mic-error" role="alert">{sttError}</div>
+      ) : showInterim ? (
+        <div className="mic-transcript">{interim}</div>
+      ) : null}
 
       <div className="lat-mini">last <span className="v mono">{latency.toFixed(2)}s</span></div>
 
