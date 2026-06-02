@@ -96,6 +96,27 @@ export function createScene({ canvas, labelLayer, tooltip, data, workStates }) {
   );
   scene.add(ariaWireframe2);
 
+  // ── CATEGORY POSITIONS (irregular sphere, not a flat ring) ────
+  const cats = data.nodes.filter(n => n.type === 'category');
+  const CAT_R = 4.7;
+  const catDirs = {};
+  const phiOffsets   = [0.30, -0.55, 0.18, -0.20, 0.65, -0.35];
+  const thetaOffsets = [0.00,  1.05, 2.10,  3.10, 4.05,  5.10];
+  cats.forEach((n, i) => {
+    const theta = thetaOffsets[i % thetaOffsets.length] + 0.18;
+    const phi   = phiOffsets[i % phiOffsets.length];
+    const v = new THREE.Vector3(
+      Math.cos(theta) * Math.cos(phi),
+      Math.sin(phi),
+      Math.sin(theta) * Math.cos(phi),
+    ).normalize();
+    catDirs[n.id] = v.clone();
+  });
+  const nodePositions = { aria: new THREE.Vector3(0, 0, 0) };
+  cats.forEach((n) => {
+    nodePositions[n.id] = catDirs[n.id].clone().multiplyScalar(CAT_R);
+  });
+
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
     renderer.setSize(w, h, false);
