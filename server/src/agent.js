@@ -1,6 +1,14 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { TOOL_DEFINITIONS, callTool } from './tools.js';
 import { buildMemoryBlock, addSession } from './memory.js';
+import { broadcast } from './index.js';
+
+const DELEGATE_TO_SLUG = {
+  delegate_to_scout:    'scout',
+  delegate_to_hunter:   'hunter',
+  delegate_to_creative: 'creative',
+  delegate_to_hermes:   'hermes',
+};
 
 let _client = null;
 const getClient = () => {
@@ -145,7 +153,10 @@ export async function runAgent(userText, history, context, onEvent) {
         toolUseBlocks.map(async (tool) => {
           const silent = tool.name === 'save_to_memory' || tool.name === 'update_client';
           if (!silent) onEvent({ type: 'tool_call', name: tool.name });
+          const slug = DELEGATE_TO_SLUG[tool.name];
+          if (slug) broadcast({ type: 'agent_state', slug, state: 'working' });
           const result = await callTool(tool.name, tool.input, onEvent);
+          if (slug) broadcast({ type: 'agent_state', slug, state: 'returning' });
           if (!silent) onEvent({ type: 'tool_result', name: tool.name, preview: summarizeResult(result) });
           return {
             type: 'tool_result',
