@@ -136,14 +136,18 @@ export async function runAgent(userText, history, context, onEvent) {
 
     console.log('[agent] building system prompt...');
     const systemPrompt = await buildSystemPrompt(context);
-    console.log('[agent] calling Anthropic API...');
-    const response = await getClient().messages.create({
+    console.log('[agent] calling Anthropic API (streaming)...');
+    const stream = getClient().messages.stream({
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: systemPrompt,
       tools: TOOL_DEFINITIONS,
       messages,
     });
+    // Real-time streaming: forward Claude's text deltas to the client the instant
+    // they arrive, so the first sentence reaches TTS while the rest still generates.
+    stream.on('text', (delta) => { if (delta) onEvent({ type: 'token', text: delta }); });
+    const response = await stream.finalMessage();
 
     if (response.stop_reason === 'tool_use') {
       const toolUseBlocks = response.content.filter(b => b.type === 'tool_use');
@@ -171,12 +175,7 @@ export async function runAgent(userText, history, context, onEvent) {
       const textBlock = response.content.find(b => b.type === 'text');
       const fullText = textBlock?.text || '';
 
-      const words = fullText.split(' ');
-      for (const word of words) {
-        onEvent({ type: 'token', text: word + ' ' });
-        await sleep(15);
-      }
-
+      // Tokens already streamed live via stream.on('text') above.
       onEvent({ type: 'done', text: fullText });
       return { text: fullText, messages };
     }
@@ -237,5 +236,3 @@ function summarizeResult(result) {
   if (result.bufferId !== undefined) return `LinkedIn post scheduled`;
   return JSON.stringify(result).slice(0, 80);
 }
-
-const sleep = ms => new Promise(r => setTimeout(r, ms));
