@@ -7,6 +7,10 @@ export default function NeuralMap({ data, workStates }) {
   const tooltipRef = useRef(null);
   const sceneHandleRef = useRef(null);
 
+  // Build (and rebuild) the scene whenever the data set changes — e.g. when the
+  // initial MOCK_DATA is replaced by the server-fetched /neural-map payload.
+  // dispose() tears the old scene down fully (incl. CSS2D labels) so the rebuild
+  // doesn't stack duplicates.
   useEffect(() => {
     if (!canvasRef.current) return;
     sceneHandleRef.current = createScene({
@@ -21,17 +25,12 @@ export default function NeuralMap({ data, workStates }) {
       sceneHandleRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [data]);
 
   // Push live work-state changes into the scene without re-mounting
   useEffect(() => {
     sceneHandleRef.current?.setWorkStates?.(workStates);
   }, [workStates]);
-
-  // Push data updates without rebuilding the whole scene
-  useEffect(() => {
-    sceneHandleRef.current?.setData?.(data);
-  }, [data]);
 
   return (
     <>

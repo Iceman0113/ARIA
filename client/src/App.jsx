@@ -265,6 +265,7 @@ function CofounderApp({ config }) {
         <Console
           drawerOpen={drawerOpen}
           onCloseDrawer={() => setDrawerOpen(false)}
+          workStates={{}}
           messages={messages}
           alerts={alerts}
           metrics={metrics}
