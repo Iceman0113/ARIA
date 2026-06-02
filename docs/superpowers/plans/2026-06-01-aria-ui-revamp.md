@@ -3805,7 +3805,7 @@ Real KPIs from `metrics`, real actions/intel from Supabase + the WS streams.
 
 **Steps:**
 
-- [ ] **Step 1** — Create failing test `/Users/randyjewell/ARIA/client/src/dashboard/KpiStrip.test.jsx`:
+- [x] **Step 1** — Create failing test `/Users/randyjewell/ARIA/client/src/dashboard/KpiStrip.test.jsx`:
   ```jsx
   import { describe, it, expect } from 'vitest';
   import { render, screen } from '@testing-library/react';
@@ -3830,9 +3830,9 @@ Real KPIs from `metrics`, real actions/intel from Supabase + the WS streams.
   });
   ```
 
-- [ ] **Step 2** — Run `npm test`. Expected: failure.
+- [x] **Step 2** — Run `npm test`. Expected: failure.
 
-- [ ] **Step 3** — Create `/Users/randyjewell/ARIA/client/src/dashboard/KpiStrip.jsx`:
+- [x] **Step 3** — Create `/Users/randyjewell/ARIA/client/src/dashboard/KpiStrip.jsx`:
   ```jsx
   export default function KpiStrip({
     mrr, mrrTarget, mrrWeekDelta,
@@ -3868,7 +3868,7 @@ Real KPIs from `metrics`, real actions/intel from Supabase + the WS streams.
   }
   ```
 
-- [ ] **Step 4** — Append to `client/src/index.css`:
+- [x] **Step 4** — Append to `client/src/index.css`:
   ```css
   /* ============== DRAWER KPI STRIP ============== */
   .drawer-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
@@ -3894,9 +3894,9 @@ Real KPIs from `metrics`, real actions/intel from Supabase + the WS streams.
   }
   ```
 
-- [ ] **Step 5** — Run `npm test`. Expected: pass.
+- [x] **Step 5** — Run `npm test`. Expected: pass.
 
-- [ ] **Step 6** — Commit:
+- [x] **Step 6** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/dashboard/KpiStrip.jsx client/src/dashboard/KpiStrip.test.jsx client/src/index.css && git commit -m "Add KpiStrip: 4 dashboard drawer KPI cards"
   ```
@@ -3910,7 +3910,7 @@ Real KPIs from `metrics`, real actions/intel from Supabase + the WS streams.
 
 **Steps:**
 
-- [ ] **Step 1** — Create failing test:
+- [x] **Step 1** — Create failing test:
   ```jsx
   // /Users/randyjewell/ARIA/client/src/dashboard/ActionsPanel.test.jsx
   import { describe, it, expect } from 'vitest';
@@ -3948,9 +3948,9 @@ Real KPIs from `metrics`, real actions/intel from Supabase + the WS streams.
   });
   ```
 
-- [ ] **Step 2** — Run `npm test`. Expected: failure.
+- [x] **Step 2** — Run `npm test`. Expected: failure.
 
-- [ ] **Step 3** — Create `/Users/randyjewell/ARIA/client/src/dashboard/ActionsPanel.jsx`:
+- [x] **Step 3** — Create `/Users/randyjewell/ARIA/client/src/dashboard/ActionsPanel.jsx`:
   ```jsx
   const URGENCY_CLASS = { hot: 'hot', soon: 'soon', today: '', future: 'future' };
   const DUE_CLASS     = { hot: 'hot', soon: 'soon', today: '', future: '' };
@@ -3981,7 +3981,7 @@ Real KPIs from `metrics`, real actions/intel from Supabase + the WS streams.
   }
   ```
 
-- [ ] **Step 4** — Append to `client/src/index.css`:
+- [x] **Step 4** — Append to `client/src/index.css`:
   ```css
   /* ============== DRAWER PANELS ============== */
   .panel {
@@ -4022,9 +4022,9 @@ Real KPIs from `metrics`, real actions/intel from Supabase + the WS streams.
   .action-row .due.soon { color: var(--warn); }
   ```
 
-- [ ] **Step 5** — Run `npm test`. Expected: pass.
+- [x] **Step 5** — Run `npm test`. Expected: pass.
 
-- [ ] **Step 6** — Commit:
+- [x] **Step 6** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/dashboard/ActionsPanel.jsx client/src/dashboard/ActionsPanel.test.jsx client/src/index.css && git commit -m "Add ActionsPanel with urgency markers"
   ```
@@ -4038,7 +4038,7 @@ Real KPIs from `metrics`, real actions/intel from Supabase + the WS streams.
 
 **Steps:**
 
-- [ ] **Step 1** — Create failing test:
+- [x] **Step 1** — Create failing test:
   ```jsx
   // /Users/randyjewell/ARIA/client/src/dashboard/IntelFeed.test.jsx
   import { describe, it, expect } from 'vitest';
@@ -4071,9 +4071,9 @@ Real KPIs from `metrics`, real actions/intel from Supabase + the WS streams.
   });
   ```
 
-- [ ] **Step 2** — Run `npm test`. Expected: failure.
+- [x] **Step 2** — Run `npm test`. Expected: failure.
 
-- [ ] **Step 3** — Create `/Users/randyjewell/ARIA/client/src/dashboard/IntelFeed.jsx`:
+- [x] **Step 3** — Create `/Users/randyjewell/ARIA/client/src/dashboard/IntelFeed.jsx`:
   ```jsx
   const AGENT_META = {
     scout:    { abbr: 'SCT', name: 'Scout',    color: '#6BD08F' },
@@ -4113,7 +4113,7 @@ Real KPIs from `metrics`, real actions/intel from Supabase + the WS streams.
   }
   ```
 
-- [ ] **Step 4** — Append to `client/src/index.css`:
+- [x] **Step 4** — Append to `client/src/index.css`:
   ```css
   .intel-row {
     display: grid; grid-template-columns: auto 1fr auto; gap: 12px;
@@ -4135,9 +4135,9 @@ Real KPIs from `metrics`, real actions/intel from Supabase + the WS streams.
   .intel-row .time { font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); white-space: nowrap; }
   ```
 
-- [ ] **Step 5** — Run `npm test`. Expected: pass.
+- [x] **Step 5** — Run `npm test`. Expected: pass.
 
-- [ ] **Step 6** — Commit:
+- [x] **Step 6** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/dashboard/IntelFeed.jsx client/src/dashboard/IntelFeed.test.jsx client/src/index.css && git commit -m "Add IntelFeed with per-agent avatar tile + empty state"
   ```
@@ -4151,7 +4151,7 @@ Real KPIs from `metrics`, real actions/intel from Supabase + the WS streams.
 
 **Steps:**
 
-- [ ] **Step 1** — Replace `/Users/randyjewell/ARIA/client/src/pages/Console.jsx`:
+- [x] **Step 1** — Replace `/Users/randyjewell/ARIA/client/src/pages/Console.jsx`:
   ```jsx
   import { useEffect, useState } from 'react';
   import NeuralMap from '../neural-map/NeuralMap.jsx';
@@ -4216,12 +4216,12 @@ Real KPIs from `metrics`, real actions/intel from Supabase + the WS streams.
   }
   ```
 
-- [ ] **Step 2** — Append to `client/src/index.css`:
+- [x] **Step 2** — Append to `client/src/index.css`:
   ```css
   .drawer-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; }
   ```
 
-- [ ] **Step 3** — In `App.jsx`, derive `actions` and `intel`. Add a helper at the bottom of the file (outside the component):
+- [x] **Step 3** — In `App.jsx`, derive `actions` and `intel`. Add a helper at the bottom of the file (outside the component):
   ```jsx
   function relativeTime(ts) {
     const sec = Math.max(1, Math.floor((Date.now() - ts) / 1000));
@@ -4232,7 +4232,7 @@ Real KPIs from `metrics`, real actions/intel from Supabase + the WS streams.
   }
   ```
 
-- [ ] **Step 4** — Inside `CofounderApp`, add the derived values right before `// ── Render ──`:
+- [x] **Step 4** — Inside `CofounderApp`, add the derived values right before `// ── Render ──`:
   ```jsx
     const actions = (metrics?.actions || []).slice(0, 5).map((a, i) => ({
       id: a.id || `a-${i}`,
@@ -4250,7 +4250,7 @@ Real KPIs from `metrics`, real actions/intel from Supabase + the WS streams.
     }));
   ```
 
-- [ ] **Step 5** — Replace the `<Console />` block in the JSX with the full prop set:
+- [x] **Step 5** — Replace the `<Console />` block in the JSX with the full prop set:
   ```jsx
         {activeRoute === 'console' && (
           <Console
@@ -4269,9 +4269,9 @@ Real KPIs from `metrics`, real actions/intel from Supabase + the WS streams.
         )}
   ```
 
-- [ ] **Step 6** — Boot both servers. Click `Dashboard ▴`. Expected: 4 KPI cards on top, "Today's actions" panel on the left (empty state until `metrics.actions` is populated), "Intel feed" panel on the right (empty state until `alert` events fire).
+- [x] **Step 6** — Boot both servers. Click `Dashboard ▴`. Expected: 4 KPI cards on top, "Today's actions" panel on the left (empty state until `metrics.actions` is populated), "Intel feed" panel on the right (empty state until `alert` events fire).
 
-- [ ] **Step 7** — Commit:
+- [x] **Step 7** — Commit:
   ```bash
   cd /Users/randyjewell/ARIA && git add client/src/App.jsx client/src/pages/Console.jsx client/src/index.css && git commit -m "Wire DashboardDrawer to live KPIs, Actions, IntelFeed"
   ```
