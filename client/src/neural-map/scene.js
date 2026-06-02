@@ -5,6 +5,7 @@ import { ARIA_CORE_FS } from './shaders/ariaCore.frag.glsl.js';
 import { ARIA_SHELL_VS, ARIA_SHELL_FS } from './shaders/ariaShell.frag.glsl.js';
 import { DENDRITE_VS } from './shaders/dendrite.vert.glsl.js';
 import { DENDRITE_FS } from './shaders/dendrite.frag.glsl.js';
+import { FILAMENT_VS, FILAMENT_FS } from './shaders/filament.frag.glsl.js';
 
 /**
  * createScene — mounts a Three.js scene into the given hosts.
@@ -178,6 +179,92 @@ export function createScene({ canvas, labelLayer, tooltip, data, workStates }) {
     const mesh = new THREE.Mesh(tubeGeom, mat);
     scene.add(mesh);
     dendrites.push({ curve, mesh, fromId: 'aria', toId: cat.id, color: cat.color, freshness: cat.freshness });
+  });
+
+  // ── GROWTH TIPS (anemone filaments) ───────────────────────────
+  const growthTips = {};
+  cats.forEach((cat, ci) => {
+    const pos = nodePositions[cat.id];
+    const group = new THREE.Group();
+    group.position.copy(pos);
+    scene.add(group);
+
+    const outward = pos.clone().normalize();
+    group.lookAt(group.position.clone().add(outward));
+
+    // hot core sphere
+    const coreSphere = new THREE.Mesh(
+      new THREE.SphereGeometry(0.13, 16, 16),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(cat.color), transparent: true, opacity: 0.95 })
+    );
+    coreSphere.userData = { ...cat, _color: cat.color };
+    group.add(coreSphere);
+
+    // halo
+    const halo = new THREE.Mesh(
+      new THREE.SphereGeometry(0.34, 20, 20),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color(cat.color), transparent: true, opacity: 0.16,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })
+    );
+    group.add(halo);
+
+    // 14 filaments — deterministic per-cat per-filament seed
+    const filaments = [];
+    const FIL_COUNT = 14;
+    for (let i = 0; i < FIL_COUNT; i++) {
+      const seedA = ((ci * 73 + i * 17) % 100) / 100;
+      const seedB = ((ci * 41 + i * 29) % 100) / 100;
+      const seedC = ((ci * 13 + i *  7) % 100) / 100;
+      const u = i / FIL_COUNT;
+      const theta = u * Math.PI * 2 + seedA * 0.6;
+      const phi   = (seedB - 0.5) * 1.2;
+      const tipDir = new THREE.Vector3(
+        Math.cos(theta) * Math.cos(phi),
+        Math.sin(phi),
+        Math.abs(Math.sin(theta)) * 0.4 + 0.25,
+      ).normalize();
+      const len    = 0.32 + seedC * 0.35;
+      const startF = new THREE.Vector3(0, 0, 0);
+      const tipF   = tipDir.clone().multiplyScalar(len);
+      const ctrlF  = startF.clone().lerp(tipF, 0.5).add(new THREE.Vector3(
+        (seedA - 0.5) * 0.12,
+        (seedB - 0.5) * 0.12,
+        (seedC - 0.5) * 0.12,
+      ));
+      const curveF = new THREE.QuadraticBezierCurve3(startF, ctrlF, tipF);
+      const fGeom  = new THREE.TubeGeometry(curveF, 20, 0.014, 10, false);
+      const fMat   = new THREE.ShaderMaterial({
+        uniforms: {
+          uTime:      dendriteUniforms.uTime,
+          uColor:     { value: new THREE.Color(cat.color) },
+          uFreshness: { value: cat.freshness },
+          uPhase:     { value: seedA * Math.PI * 2 },
+        },
+        vertexShader:   FILAMENT_VS,
+        fragmentShader: FILAMENT_FS,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      const filMesh = new THREE.Mesh(fGeom, fMat);
+      group.add(filMesh);
+
+      // tip ember at each filament end
+      const fTip = new THREE.Mesh(
+        new THREE.SphereGeometry(0.026, 12, 12),
+        new THREE.MeshBasicMaterial({
+          color: new THREE.Color(cat.color), transparent: true, opacity: 0.95,
+          blending: THREE.AdditiveBlending, depthWrite: false,
+        })
+      );
+      fTip.position.copy(tipF);
+      group.add(fTip);
+      filaments.push({ mesh: filMesh, tip: fTip, baseLen: len, dir: tipDir });
+    }
+
+    growthTips[cat.id] = { group, coreSphere, halo, filaments, color: cat.color, data: cat };
   });
 
   function resize() {
