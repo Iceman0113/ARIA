@@ -7,10 +7,10 @@ describe('computeFloatOffset', () => {
     const v = computeFloatOffset({ state: 'idle', stateStartTime: 0 }, 5.0);
     expect(v.length()).toBe(0);
   });
-  it('returns a Lissajous offset when working with radius ~1.7', () => {
+  it('returns a large Lissajous offset when working (dramatic orbit, r~2.6)', () => {
     const v = computeFloatOffset({ state: 'working', stateStartTime: 0 }, 1.0);
-    expect(v.length()).toBeGreaterThan(0.2);
-    expect(v.length()).toBeLessThan(2.0);
+    expect(v.length()).toBeGreaterThan(1.0);
+    expect(v.length()).toBeLessThan(5.0);
   });
   it('eases the offset back to zero over 1.6s when returning', () => {
     const ws = { state: 'returning', stateStartTime: 0, floatStartOffset: new THREE.Vector3(1.0, 0, 0) };

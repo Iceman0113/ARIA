@@ -16,11 +16,13 @@ export function createInitialWorkStates(catSlugs) {
 export function computeFloatOffset(ws, tSince) {
   const out = new THREE.Vector3();
   if (ws.state === 'working') {
-    const r = 1.7;
+    // Big, energetic Lissajous orbit with a secondary harmonic for swooping motion.
+    const r = 2.6;
+    const t = tSince;
     out.set(
-      Math.sin(tSince * 0.65)       * r * 0.80,
-      Math.cos(tSince * 0.75 + 1.2) * r * 0.55,
-      Math.sin(tSince * 0.45 + 2.4) * r * 0.70,
+      (Math.sin(t * 0.95)       * 0.85 + Math.sin(t * 2.1 + 0.5) * 0.28) * r,
+      (Math.cos(t * 1.10 + 1.2) * 0.62 + Math.sin(t * 2.5 + 2.0) * 0.22) * r,
+      (Math.sin(t * 0.75 + 2.4) * 0.78 + Math.cos(t * 1.7 + 1.1) * 0.24) * r,
     );
   } else if (ws.state === 'returning') {
     const k = Math.min(1, tSince / 1.6);

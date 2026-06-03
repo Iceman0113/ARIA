@@ -553,7 +553,7 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
       tip.group.rotateZ(t * 0.05 + i * 0.3);
 
       const haloPulse = ws.state === 'working'
-        ? 1.0 + Math.sin(t * 3.2 + i) * 0.18
+        ? 1.18 + Math.sin(t * 4.0 + i) * 0.32
         : 1.0 + Math.sin(t * 1.1 + i) * 0.07;
       tip.halo.scale.setScalar(haloPulse);
       tip.coreSphere.material.opacity = 0.7 + cat.freshness * 0.25 + voicePulse * 0.05 + (ws.state === 'working' ? 0.1 : 0);
@@ -564,7 +564,7 @@ export function createScene({ canvas, labelLayer, tooltip, data }) {
       lpos[3] = np.x;     lpos[4] = np.y;     lpos[5] = np.z;
       leash.geometry.attributes.position.needsUpdate = true;
       if (ws.state === 'working') {
-        leash.material.opacity = 0.32 + 0.28 * Math.abs(Math.sin(t * 5));
+        leash.material.opacity = 0.5 + 0.42 * Math.abs(Math.sin(t * 6.5));
       } else if (ws.state === 'returning') {
         leash.material.opacity = 0.45 * (1 - Math.min(1, tSince / 1.6));
       } else {
