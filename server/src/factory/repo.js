@@ -61,6 +61,18 @@ export async function transition(id, to, patch = {}) {
   return data;
 }
 
+/**
+ * Persist revision feedback on a task WITHOUT a state change. Used by the
+ * feedback endpoint; runRevision then drives the actual state transitions.
+ */
+export async function setRevisionFeedback(id, feedback) {
+  const { error } = await sb()
+    .from('spawn_tasks')
+    .update({ revision_feedback: feedback, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw new Error(`setRevisionFeedback: ${error.message}`);
+}
+
 export async function setError(id, message) {
   // Goes to failed from ANY non-terminal state.
   const task = await getTask(id);

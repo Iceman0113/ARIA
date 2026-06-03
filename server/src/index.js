@@ -14,6 +14,7 @@ import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 import crypto from 'crypto';
 import { buildAuthorizeUrl, exchangeCodeForTokens, fetchMemberUrn, fetchAdminOrganizations, saveAuth, loadAuth } from './linkedin.js';
 import { buildNeuralMap } from './neural-map.js';
+import { mountFactoryRoutes } from './factory/routes.js';
 
 const app = express();
 app.use(cors({ origin: ['http://localhost:5174', 'http://localhost:5173'] }));
@@ -233,6 +234,9 @@ app.get('/auth/linkedin/status', async (_, res) => {
     needsRefresh: new Date(auth.expires_at).getTime() < Date.now() + 5 * 60 * 1000,
   });
 });
+
+// ── Agent Factory ─────────────────────────────────────────────────
+mountFactoryRoutes(app, broadcast);
 
 // ── TTS proxy (Microsoft Edge neural voices, free, no API key) ────
 // Frontend POSTs text, gets back audio/mpeg. Default voice: en-GB-SoniaNeural.
