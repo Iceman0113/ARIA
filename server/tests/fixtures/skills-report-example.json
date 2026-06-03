@@ -1,0 +1,21 @@
+{
+  "domain": "PDF text extraction",
+  "competencies": [
+    "Extract text from PDF files with embedded fonts",
+    "Handle scanned PDFs via OCR fallback",
+    "Detect and reconstruct tables"
+  ],
+  "tools_available": ["web_search"],
+  "tools_wishlist": [
+    { "name": "pdf_to_text", "purpose": "extract raw text", "external_dependency": "pdftotext (Poppler)" }
+  ],
+  "design_patterns": [
+    "Try text extraction first, fall back to OCR on empty result",
+    "Preserve page boundaries for chunking downstream"
+  ],
+  "sources": [
+    { "url": "https://example.com/docs/pdftotext", "title": "Poppler docs", "excerpt": "pdftotext converts PDF files into plain text." },
+    { "url": "https://example.com/blog/ocr", "title": "When to use OCR", "excerpt": "Use OCR when extracted text is empty." },
+    { "url": "https://example.com/papers/table-extraction", "title": "Table extraction in PDFs", "excerpt": "Tables can be detected by line-clustering." }
+  ]
+}
