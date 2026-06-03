@@ -309,7 +309,11 @@ export const TOOL_DEFINITIONS = [
 
 // ── Tool dispatcher ───────────────────────────────────────────────
 
-export async function callTool(name, input, onEvent, broadcast) {
+export async function callTool(name, input, onEvent, broadcast, ctx) {
+  // Layer 3 of containment (spec §8): Hermes ban for spawned agents.
+  if (name === 'delegate_to_hermes' && ctx?.caller?.kind === 'spawned_agent') {
+    throw new Error(`Hermes is unreachable from Factory-spawned agents (caller: ${ctx.caller.slug})`);
+  }
   switch (name) {
     case 'get_revenue_metrics':    return getRevenueMetrics(input.period || '30d');
     case 'track_mrr_vs_bridge':    return trackMrrVsBridge();
