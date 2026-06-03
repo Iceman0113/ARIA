@@ -10,6 +10,7 @@ import { runScout } from './subagents/scout.js';
 import { runHunter } from './subagents/hunter.js';
 import { runCreative } from './subagents/creative.js';
 import { runHermes } from './subagents/hermes.js';
+import { webSearch } from './subagents/shared.js';
 import { publishPost as publishLinkedInPost, loadAuth as loadLinkedInAuth, getTargets as getLinkedInTargets } from './linkedin.js';
 
 // ── Tool definitions for Claude ───────────────────────────────────
@@ -29,6 +30,7 @@ export const TOOL_DEFINITIONS = [
       },
       required: ['period'],
     },
+    factory_allowed: false,
   },
   {
     name: 'track_mrr_vs_bridge',
@@ -38,6 +40,7 @@ export const TOOL_DEFINITIONS = [
       properties: {},
       required: [],
     },
+    factory_allowed: false,
   },
   {
     name: 'check_competitors',
@@ -47,6 +50,7 @@ export const TOOL_DEFINITIONS = [
       properties: {},
       required: [],
     },
+    factory_allowed: true,
   },
   {
     name: 'get_business_summary',
@@ -56,6 +60,7 @@ export const TOOL_DEFINITIONS = [
       properties: {},
       required: [],
     },
+    factory_allowed: false,
   },
   {
     name: 'save_to_memory',
@@ -83,6 +88,7 @@ export const TOOL_DEFINITIONS = [
       },
       required: ['type', 'key', 'value'],
     },
+    factory_allowed: false,
   },
   {
     name: 'get_memory',
@@ -92,6 +98,7 @@ export const TOOL_DEFINITIONS = [
       properties: {},
       required: [],
     },
+    factory_allowed: false,
   },
   {
     name: 'delegate_to_scout',
@@ -111,6 +118,7 @@ export const TOOL_DEFINITIONS = [
       },
       required: ['task'],
     },
+    factory_allowed: true,
   },
   {
     name: 'delegate_to_hunter',
@@ -126,6 +134,7 @@ export const TOOL_DEFINITIONS = [
       },
       required: ['industry'],
     },
+    factory_allowed: true,
   },
   {
     name: 'delegate_to_hermes',
@@ -140,6 +149,7 @@ export const TOOL_DEFINITIONS = [
       },
       required: ['task'],
     },
+    factory_allowed: false,
   },
   {
     name: 'delegate_to_creative',
@@ -159,6 +169,7 @@ export const TOOL_DEFINITIONS = [
       },
       required: ['objective'],
     },
+    factory_allowed: true,
   },
   {
     name: 'get_client_roster',
@@ -168,6 +179,7 @@ export const TOOL_DEFINITIONS = [
       properties: {},
       required: [],
     },
+    factory_allowed: true,
   },
   {
     name: 'update_client',
@@ -194,6 +206,7 @@ export const TOOL_DEFINITIONS = [
       },
       required: [],
     },
+    factory_allowed: false,
   },
   {
     name: 'draft_conversion_email',
@@ -211,6 +224,7 @@ export const TOOL_DEFINITIONS = [
       },
       required: ['client_name', 'recommended_tier'],
     },
+    factory_allowed: true,
   },
   {
     name: 'generate_proposal',
@@ -229,6 +243,7 @@ export const TOOL_DEFINITIONS = [
       },
       required: ['prospect_name', 'call_notes', 'recommended_tier'],
     },
+    factory_allowed: true,
   },
   {
     name: 'publish_to_linkedin',
@@ -249,16 +264,31 @@ export const TOOL_DEFINITIONS = [
       },
       required: ['content'],
     },
+    factory_allowed: false,
   },
   {
     name: 'check_linkedin_connection',
     description: 'Check whether Randy\'s LinkedIn is connected (auth tokens stored) and when the token expires. Call this before posting if you\'re not sure, or when Randy asks "is LinkedIn connected?"',
     input_schema: { type: 'object', properties: {}, required: [] },
+    factory_allowed: false,
   },
   {
     name: 'get_linkedin_targets',
     description: 'Get the list of who Randy can post as on LinkedIn — his personal account plus any Company Pages he admins (like Jack & Jewell). Call this BEFORE publish_to_linkedin if Randy hasn\'t said which identity to use, or when he asks "who can ARIA post as?"',
     input_schema: { type: 'object', properties: {}, required: [] },
+    factory_allowed: false,
+  },
+  {
+    name: 'web_search',
+    description: 'Search the public web via Serper. Returns top 10 results with title, url, snippet, and optional date. Use for any "look this up" task — competitor news, vendor docs, market research, current events.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search query — be specific for better results.' },
+      },
+      required: ['query'],
+    },
+    factory_allowed: true,
   },
 ];
 
@@ -281,6 +311,7 @@ export async function callTool(name, input, onEvent) {
     case 'generate_proposal':      return generateProposal(input);
     case 'publish_to_linkedin':    return publishLinkedInPost(input);
     case 'get_linkedin_targets':   return getLinkedInTargets();
+    case 'web_search':             return webSearch(input.query);
     case 'check_linkedin_connection': {
       const auth = await loadLinkedInAuth();
       if (!auth) return { connected: false, action: 'Visit http://localhost:3001/auth/linkedin to authorize.' };
