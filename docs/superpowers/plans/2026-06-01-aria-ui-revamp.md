@@ -4299,9 +4299,9 @@ One task: walk the spec §10 checklist. Do not mark anything complete that you h
   - Mouse over each of the 6 growth-tip spheres → that sub-agent's tooltip.
   - Mouse near a pollen leaf (within 22px) → that leaf's tooltip with freshness bar in the parent's color.
 
-- [ ] **Step 5** — Voice: click the mic, say "hey ARIA". Expected: STT shows the recognized text, message is sent to ARIA, ARIA replies via Edge TTS audio.
+- [x] **Step 5** — Voice: click the mic, say "hey ARIA". Expected: STT shows the recognized text, message is sent to ARIA, ARIA replies via Edge TTS audio.
 
-- [ ] **Step 6** — Sub-agent float test: type "scout, search for MSPs in Greenwood, IN". Expected: within ~1s Scout's growth tip detaches and starts a Lissajous orbit; a pulsing lime leash connects tip to anchor; when Scout returns the result, the tip eases back home over 1.6s and the leash fades.
+- [x] **Step 6** — Sub-agent float test: type "scout, search for MSPs in Greenwood, IN". Expected: within ~1s Scout's growth tip detaches and starts a Lissajous orbit; a pulsing lime leash connects tip to anchor; when Scout returns the result, the tip eases back home over 1.6s and the leash fades.
 
 - [x] **Step 7** — Drawer test:
   - Click `Dashboard ▴` → slides up ~0.4s.
@@ -4322,7 +4322,7 @@ One task: walk the spec §10 checklist. Do not mark anything complete that you h
   ```
   Expected: all green on both sides.
 
-- [ ] **Step 12** — Marker commit:
+- [x] **Step 12** — Marker commit:
   ```bash
   cd /Users/randyjewell/ARIA && git commit --allow-empty -m "UI revamp verified against spec §10"
   ```
