@@ -2,6 +2,10 @@ import { useEffect, useState, useCallback } from 'react';
 
 const API = ''; // same origin — vite proxies to :3001 already (or use http://localhost:3001)
 
+// Display-only revision cap — mirrors MAX_REVISIONS in server/src/factory/routes.js.
+// The server enforces the real cap; this is used only for the UI label.
+const MAX_REVISIONS = 3;
+
 async function fetchJSON(path, opts = {}) {
   const res = await fetch(`${API}${path}`, opts);
   if (!res.ok) throw new Error(await res.text());
@@ -98,7 +102,7 @@ export default function Factory({ ws }) {
         {pending.map(task => {
           const p = task.proposed_manifest || {};
           const iters = task.approval_iterations || 0;
-          const remaining = 3 - iters;
+          const remaining = MAX_REVISIONS - iters;
           return (
             <article key={task.id} style={{ background: 'rgba(0,229,204,0.06)', border: '1px solid rgba(0,229,204,0.2)', borderRadius: 12, padding: 20, marginTop: 16 }}>
               <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>

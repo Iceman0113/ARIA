@@ -43,6 +43,24 @@ describe('RegistryWatcher', () => {
     expect(channelMock.subscribe).toHaveBeenCalled();
   });
 
+  it('start() is idempotent — a second call does not create a second interval or re-subscribe', async () => {
+    const { RegistryWatcher } = await import('../src/factory/registry-watcher.js');
+    const fakeRegistry = {
+      register: vi.fn(),
+      unregister: vi.fn(),
+    };
+    const watcher = new RegistryWatcher(fakeRegistry);
+    await watcher.start();
+    const firstTimer = watcher._pollTimer;
+    // subscribe should have been called exactly once
+    expect(channelMock.subscribe).toHaveBeenCalledTimes(1);
+
+    // Second start() must be a no-op
+    await watcher.start();
+    expect(channelMock.subscribe).toHaveBeenCalledTimes(1); // still 1
+    expect(watcher._pollTimer).toBe(firstTimer);             // same timer handle
+  });
+
   it('unregisters tools for agents no longer live', async () => {
     const { RegistryWatcher } = await import('../src/factory/registry-watcher.js');
     const registered = new Map();

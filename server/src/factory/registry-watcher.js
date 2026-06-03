@@ -21,9 +21,12 @@ export class RegistryWatcher {
     this._registry = toolRegistry;
     this._known = new Map();   // slug → row
     this._pollTimer = null;
+    this._started = false;
   }
 
   async start() {
+    if (this._started) return;
+    this._started = true;
     await this.refresh();
     const sb = getSupabase();
     if (!sb) {
