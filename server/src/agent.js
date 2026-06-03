@@ -1,7 +1,6 @@
 import { TOOL_DEFINITIONS, callTool } from './tools.js';
 import { buildMemoryBlock, addSession } from './memory.js';
 import { getClient } from './anthropic.js';
-import { broadcast } from './index.js';
 
 const DELEGATE_TO_SLUG = {
   delegate_to_scout:    'scout',
@@ -117,7 +116,7 @@ const buildSystemPrompt = async (context = {}) => {
   ].join('\n');
 };
 
-export async function runAgent(userText, history, context, onEvent) {
+export async function runAgent(userText, history, context, onEvent, broadcast) {
   const messages = [
     ...history,
     { role: 'user', content: userText },
@@ -154,7 +153,7 @@ export async function runAgent(userText, history, context, onEvent) {
           if (!silent) onEvent({ type: 'tool_call', name: tool.name });
           const slug = DELEGATE_TO_SLUG[tool.name];
           if (slug) broadcast({ type: 'agent_state', slug, state: 'working' });
-          const result = await callTool(tool.name, tool.input, onEvent);
+          const result = await callTool(tool.name, tool.input, onEvent, broadcast);
           if (slug) broadcast({ type: 'agent_state', slug, state: 'returning' });
           if (!silent) onEvent({ type: 'tool_result', name: tool.name, preview: summarizeResult(result) });
           return {

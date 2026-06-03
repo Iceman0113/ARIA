@@ -12,6 +12,7 @@ import { runCreative } from './subagents/creative.js';
 import { runHermes } from './subagents/hermes.js';
 import { webSearch } from './subagents/shared.js';
 import { publishPost as publishLinkedInPost, loadAuth as loadLinkedInAuth, getTargets as getLinkedInTargets } from './linkedin.js';
+import { delegateToFactory } from './factory/delegate.js';
 
 // ── Tool definitions for Claude ───────────────────────────────────
 
@@ -290,11 +291,25 @@ export const TOOL_DEFINITIONS = [
     },
     factory_allowed: true,
   },
+  {
+    name: 'delegate_to_factory',
+    description: 'Spawn a new sub-agent via the Agent Factory. Use when Randy says things like "make me an agent that does X" or "I want a sub-agent for Y". The Factory will research the domain, draft a system prompt + tool allowlist, and surface a card for Randy to approve before the agent goes live. Returns immediately with a task id — the actual research takes 30-60 seconds and a HUD card will appear when ready.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        name_hint: { type: 'string', description: 'Short name for the new agent (e.g. "Echo", "Atlas"). Will be slugified.' },
+        role_description: { type: 'string', description: "Plain-English description of what this agent should do. The Factory will research this." },
+        special_requirements: { type: 'string', description: 'Optional constraints — preferred tools, channels, frequency, voice, etc.' },
+      },
+      required: ['name_hint', 'role_description'],
+    },
+    factory_allowed: false,
+  },
 ];
 
 // ── Tool dispatcher ───────────────────────────────────────────────
 
-export async function callTool(name, input, onEvent) {
+export async function callTool(name, input, onEvent, broadcast) {
   switch (name) {
     case 'get_revenue_metrics':    return getRevenueMetrics(input.period || '30d');
     case 'track_mrr_vs_bridge':    return trackMrrVsBridge();
@@ -305,6 +320,7 @@ export async function callTool(name, input, onEvent) {
     case 'delegate_to_hunter':     return runHunter(input, onEvent);
     case 'delegate_to_creative':   return runCreative(input, onEvent);
     case 'delegate_to_hermes':     return runHermes(input, onEvent);
+    case 'delegate_to_factory':    return delegateToFactory(input, broadcast);
     case 'get_client_roster':      return getClients();
     case 'update_client':          return upsertClient(input);
     case 'draft_conversion_email': return draftConversionEmail(input);

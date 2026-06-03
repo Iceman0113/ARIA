@@ -56,7 +56,7 @@ wss.on('connection', async (ws) => {
           if (event.type === 'done' && event.text) {
             log.push({ role: 'assistant', content: event.text });
           }
-        });
+        }, broadcast);
 
         // Refresh memory + clients in UI after each exchange
         try {
