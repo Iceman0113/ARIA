@@ -28,12 +28,14 @@ export default function TopBar({ tokens, spend, mrr, mrrTarget, latency, presenc
           <span className="label">tokens</span>
           <span className="val live mono">{tokenStr}</span>
           <span className="delta mono" style={{ color: 'var(--text-mute)' }}>today</span>
+          <span className="delta mono" style={{ color: 'var(--text-mute)', fontSize: 9, letterSpacing: 1 }}>SIM</span>
         </div>
 
         <div className="pill cost">
           <span className="dot" />
           <span className="label">spend</span>
           <span className="val mono">{spendStr}</span>
+          <span className="delta mono" style={{ color: 'var(--text-mute)', fontSize: 9, letterSpacing: 1 }}>SIM</span>
         </div>
 
         <div className="pill revenue">

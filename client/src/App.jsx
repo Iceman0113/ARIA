@@ -12,7 +12,6 @@ import { FactoryHud } from './components/FactoryHud';
 const CONFIG_KEY   = 'cofounder_config_v1';
 const ALWAYSON_KEY = 'aria_alwayson';
 const CONVO_KEY    = 'aria_convo_mode';
-const MAX_TTS_CHARS = 850;
 const CONVO_TIMEOUT_MS = 30000; // wake mode stays in conversation this long after the last activity, then returns to standby
 const MRR_TARGET = 16500;
 
@@ -139,12 +138,7 @@ function CofounderApp({ config }) {
   };
   const speakText = useCallback((text, { onEnd } = {}) => {
     if (!text?.trim()) { onEnd?.(); return; }
-    let spoken = text;
-    if (text.length > MAX_TTS_CHARS) {
-      const breakAt = text.lastIndexOf('. ', MAX_TTS_CHARS);
-      spoken = (breakAt > 150 ? text.slice(0, breakAt+1) : text.slice(0, MAX_TTS_CHARS)) + ' Full response is in the chat.';
-    }
-    voice.speakWithServer(spoken, config.serverUrl, { onEnd });
+    voice.speakWithServer(text, config.serverUrl, { onEnd });
   }, [config.serverUrl]);
 
   // ── Server events ───────────────────────────────────────────────
