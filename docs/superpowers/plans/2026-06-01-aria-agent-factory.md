@@ -1,5 +1,7 @@
 # ARIA Agent Factory Implementation Plan
 
+> **[CODE-COMPLETE — 2026-06-03]** All tasks A1–H2 implemented on branch `feat/aria-agent-factory` via subagent-driven-development (per-task spec+quality review + a final holistic integration review: SHIP-READY). All automated verification passes: 73 server + 48 client tests green; no eager Anthropic instantiation; full spawn→approve→dispatch chain, state-machine legality, 3 containment layers, and WebSocket event wiring all verified clean. **Pending live verification by Randy** (cannot be automated): (1) apply the schema migration in the Supabase SQL editor, then (2) the manual live smokes — Task B3 Steps 2–3 (research CLI), Task F5 (end-to-end approve→dispatch), Task G3 (reconnect-survival), daily-cap manual, and the audit-chain SQL. See the session handoff for the runbook.
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the ARIA Agent Factory — a meta-sub-agent that researches, drafts, gets approval for, and hot-registers new sub-agents from pure-config rows in Postgres, with zero server restarts and no bespoke JS per spawned agent.
