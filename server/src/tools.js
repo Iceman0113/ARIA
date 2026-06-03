@@ -319,7 +319,10 @@ export function getActiveToolDefinitions() {
 
 // ── Tool dispatcher ───────────────────────────────────────────────
 
-export async function callTool(name, input, onEvent, broadcast, ctx) {
+export async function callTool(name, input, onEvent, broadcast = () => {}, ctx) {
+  // broadcast defaults to a no-op so callers that don't need it (e.g. monitor.js
+  // calling metric tools with 2 args) can't accidentally pass undefined into a
+  // tool that forwards it (delegate_to_factory → SpawnPipeline).
   // Layer 3 of containment (spec §8): Hermes ban for spawned agents.
   if (name === 'delegate_to_hermes' && ctx?.caller?.kind === 'spawned_agent') {
     throw new Error(`Hermes is unreachable from Factory-spawned agents (caller: ${ctx.caller.slug})`);
