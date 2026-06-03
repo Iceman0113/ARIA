@@ -117,6 +117,16 @@ export default function Factory({ ws }) {
                   <code key={t} style={{ background: 'rgba(186,255,90,0.15)', color: '#BAFF5A', padding: '2px 6px', borderRadius: 4, marginRight: 6, fontSize: 12 }}>{t}</code>
                 ))}
               </div>
+              {(p.tools_wishlist || []).length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <strong style={{ opacity: 0.7, fontSize: 12 }}>Wishlist (not yet built):</strong>{' '}
+                  {p.tools_wishlist.map(t => (
+                    <span key={t.name} title={t.purpose} style={{ background: 'rgba(255,184,77,0.15)', color: '#FFB84D', padding: '2px 6px', borderRadius: 4, marginRight: 6, fontSize: 12 }}>
+                      {t.name}
+                    </span>
+                  ))}
+                </div>
+              )}
               <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
                 <button disabled={busy} onClick={() => approve(task.id)} style={{ background: '#BAFF5A', color: '#040C10', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>Approve → Shadow</button>
                 <button disabled={busy} onClick={() => rejectWithFeedback(task.id)} style={{ background: 'transparent', color: '#E6FFFB', border: '1px solid rgba(255,255,255,0.2)', padding: '8px 16px', borderRadius: 6, cursor: 'pointer' }}>Reject with feedback</button>

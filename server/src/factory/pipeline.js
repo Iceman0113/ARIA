@@ -100,6 +100,7 @@ export class SpawnPipeline {
         system_prompt: promptResult.prompt,
         tool_allowlist: toolAllowlist,
         model: DEFAULT_MODEL,
+        tools_wishlist: research.report.tools_wishlist || [],
       };
 
       // 4. writing_prompt → awaiting_approval
