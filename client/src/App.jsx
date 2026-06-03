@@ -6,6 +6,7 @@ import TopBar from './shell/TopBar.jsx';
 import MicBar from './shell/MicBar.jsx';
 import NavChips from './shell/NavChips.jsx';
 import Console from './pages/Console.jsx';
+import { FactoryHud } from './components/FactoryHud';
 
 const CONFIG_KEY   = 'cofounder_config_v1';
 const ALWAYSON_KEY = 'aria_alwayson';
@@ -352,6 +353,7 @@ function CofounderApp({ config }) {
         presence={orbState}
       />
       <NavChips active={activeRoute} onNav={setActiveRoute} />
+      <FactoryHud ws={wsRef.current} onOpenFactory={() => setActiveRoute('factory')} />
 
       {activeRoute === 'console' && (
         <Console
