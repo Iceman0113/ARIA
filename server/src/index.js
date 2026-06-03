@@ -15,6 +15,8 @@ import crypto from 'crypto';
 import { buildAuthorizeUrl, exchangeCodeForTokens, fetchMemberUrn, fetchAdminOrganizations, saveAuth, loadAuth } from './linkedin.js';
 import { buildNeuralMap } from './neural-map.js';
 import { mountFactoryRoutes } from './factory/routes.js';
+import { RegistryWatcher } from './factory/registry-watcher.js';
+import { factoryRegistry } from './factory/tool-registry.js';
 
 const app = express();
 app.use(cors({ origin: ['http://localhost:5174', 'http://localhost:5173'] }));
@@ -323,4 +325,10 @@ server.listen(PORT, () => {
     .catch((err) => console.error(`TTS pre-warm failed: ${err.message}\n`));
 
   startMonitor(broadcast);
+
+  // Boot the Factory RegistryWatcher — first Supabase Realtime subscriber.
+  const factoryWatcher = new RegistryWatcher(factoryRegistry);
+  factoryWatcher.start()
+    .then(() => console.log(`Factory: ✓ RegistryWatcher running`))
+    .catch((err) => console.error(`Factory: watcher start failed: ${err.message}`));
 });

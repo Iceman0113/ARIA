@@ -13,6 +13,7 @@ import { runHermes } from './subagents/hermes.js';
 import { webSearch } from './subagents/shared.js';
 import { publishPost as publishLinkedInPost, loadAuth as loadLinkedInAuth, getTargets as getLinkedInTargets } from './linkedin.js';
 import { delegateToFactory } from './factory/delegate.js';
+import { factoryRegistry } from './factory/tool-registry.js';
 
 // ── Tool definitions for Claude ───────────────────────────────────
 
@@ -307,12 +308,25 @@ export const TOOL_DEFINITIONS = [
   },
 ];
 
+/**
+ * Returns the static tool registry plus any Factory-spawned dispatch tools
+ * currently registered by the RegistryWatcher. Called per-iteration by the
+ * agent loop so newly-approved agents become callable immediately.
+ */
+export function getActiveToolDefinitions() {
+  return [...TOOL_DEFINITIONS, ...factoryRegistry.getDynamicDefinitions()];
+}
+
 // ── Tool dispatcher ───────────────────────────────────────────────
 
 export async function callTool(name, input, onEvent, broadcast, ctx) {
   // Layer 3 of containment (spec §8): Hermes ban for spawned agents.
   if (name === 'delegate_to_hermes' && ctx?.caller?.kind === 'spawned_agent') {
     throw new Error(`Hermes is unreachable from Factory-spawned agents (caller: ${ctx.caller.slug})`);
+  }
+  // Dynamic Factory-spawned tools (dispatch_to_<slug>) — registered by RegistryWatcher
+  if (name.startsWith('dispatch_to_') && factoryRegistry.has(name)) {
+    return factoryRegistry.execute(name, input, onEvent);
   }
   switch (name) {
     case 'get_revenue_metrics':    return getRevenueMetrics(input.period || '30d');
