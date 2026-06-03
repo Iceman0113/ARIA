@@ -11,6 +11,7 @@ export default defineConfig({
       '/speak':       'http://localhost:3001',
       '/memory':      'http://localhost:3001',
       '/clients':     'http://localhost:3001',
+      '/factory':     'http://localhost:3001',
     },
   },
 });
