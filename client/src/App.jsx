@@ -11,6 +11,7 @@ const CONFIG_KEY   = 'cofounder_config_v1';
 const ALWAYSON_KEY = 'aria_alwayson';
 const CONVO_KEY    = 'aria_convo_mode';
 const MAX_TTS_CHARS = 850;
+const CONVO_TIMEOUT_MS = 30000; // wake mode stays in conversation this long after the last activity, then returns to standby
 const MRR_TARGET = 16500;
 
 export default function App() {
@@ -54,6 +55,7 @@ function CofounderApp({ config }) {
   const alertIdRef   = useRef(0);
   const historyRef   = useRef([]);
   const reconnectRef = useRef(null);
+  const convoDeadlineRef = useRef(0); // wake-mode conversation expiry timestamp
   const alwaysOnRef  = useRef(alwaysOn);
   const convoModeRef = useRef(convoMode);
   const startListeningRef = useRef(null);
@@ -229,10 +231,18 @@ function CofounderApp({ config }) {
   }, [orbState, enableWakeWord, enterSleeping]);
 
   const returnToBase = useCallback(() => {
-    if (convoModeRef.current) { setOrbState('idle'); setTimeout(() => startListeningRef.current?.(), 900); }
-    else if (alwaysOnRef.current) { enterSleeping(); }
-    else { setOrbState('idle'); }
-  }, [enterSleeping]);
+    if (alwaysOnRef.current) {
+      // Wake mode: stay in conversation — reopen the mic after each reply and keep
+      // the window alive for CONVO_TIMEOUT_MS. The no-speech path drops to standby.
+      convoDeadlineRef.current = Date.now() + CONVO_TIMEOUT_MS;
+      setOrbState('idle');
+      setTimeout(() => startListeningRef.current?.(), 500);
+    } else if (convoModeRef.current) {
+      setOrbState('idle'); setTimeout(() => startListeningRef.current?.(), 900);
+    } else {
+      setOrbState('idle');
+    }
+  }, []);
 
   const sendMessage = useCallback((text) => {
     if (!text.trim()) return;
@@ -250,6 +260,7 @@ function CofounderApp({ config }) {
   }, [config]);
 
   const handleWake = useCallback((afterText) => {
+    convoDeadlineRef.current = Date.now() + CONVO_TIMEOUT_MS; // open the conversation window
     setOrbState('idle');
     if (afterText && afterText.length > 3) { setTimeout(() => sendMessage(afterText), 150); }
     else { setTimeout(() => startListening(), 200); }
@@ -266,16 +277,30 @@ function CofounderApp({ config }) {
       onFinal:   (t) => setInterim(t),
       onLevel:   () => {},
       onEnd:     () => setInterim(''),
-      onError:   (code) => setSttError(sttErrorMessage(code)),
+      onError:   (code) => {
+        // In wake/conversation mode, silence between turns is expected — don't nag.
+        if (code === 'no-speech' && alwaysOnRef.current) return;
+        setSttError(sttErrorMessage(code));
+      },
     });
     setInterim('');
     if (finalText.trim()) {
       setHeard(finalText.trim());
       if (!alwaysOnRef.current) enableWakeWord();   // auto-arm wake word after first voice use
+      convoDeadlineRef.current = Date.now() + CONVO_TIMEOUT_MS; // Randy spoke → extend the window
       sendMessage(finalText.trim());
     }
+    else if (alwaysOnRef.current) {
+      // No speech this window. Keep listening for a follow-up until the conversation
+      // window expires, then drop back to "hey ARIA" standby.
+      if (Date.now() < convoDeadlineRef.current) {
+        setTimeout(() => startListeningRef.current?.(), 300);
+      } else {
+        enterSleeping();
+      }
+    }
     else returnToBase();
-  }, [sendMessage, returnToBase, enableWakeWord]);
+  }, [sendMessage, returnToBase, enableWakeWord, enterSleeping]);
 
   useEffect(() => { startListeningRef.current = startListening; }, [startListening]);
 

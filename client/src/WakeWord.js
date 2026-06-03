@@ -47,6 +47,10 @@ class WakeWordDetector {
     this._recognition = r;
 
     r.onresult = (e) => {
+      // Once a wake phrase has been handled, isActive flips false and we stop the
+      // recognition — but buffered interim results can still fire onresult and
+      // re-match the phrase, calling onWake twice. Ignore anything post-handoff.
+      if (!this.isActive) return;
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const text = e.results[i][0].transcript.toLowerCase().trim();
         for (const phrase of PHRASES) {
