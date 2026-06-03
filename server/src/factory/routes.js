@@ -119,6 +119,25 @@ export function mountFactoryRoutes(app, broadcast) {
     }
   });
 
+  // GET /factory/audit
+  app.get('/factory/audit', async (req, res) => {
+    try {
+      const { getSupabase, getTenantId } = await import('../supabase.js');
+      const sb = getSupabase();
+      const tenantId = await getTenantId();
+      const { data, error } = await sb
+        .from('spawn_tasks')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      res.json({ tasks: data || [] });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // POST /factory/agents/:slug/archive
   app.post('/factory/agents/:slug/archive', async (req, res) => {
     try {
