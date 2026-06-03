@@ -533,7 +533,7 @@ async function draftConversionEmail({ client_name, client_context, recommended_t
 
   try {
     const response = await getClient().messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 800,
       system: `You are writing a professional email on behalf of Randy at Jack & Jewell Consulting LLC, based in Greenwood, Indiana. Randy has an existing relationship with this client through break-fix IT work and is proposing a shift to a monthly managed services retainer. The email should be warm, direct, and specific — not generic. It should feel like it came from a person who knows the client, not a template. No fluff, no hard sell. Focus on their specific situation and the value of predictable IT costs. Sign it as Randy.`,
       messages: [{
@@ -581,7 +581,7 @@ async function generateProposal({ prospect_name, call_notes, recommended_tier, u
 
   try {
     const response = await getClient().messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1500,
       system: `You are writing a professional managed services proposal on behalf of Randy at Jack & Jewell Consulting LLC, based in Greenwood, Indiana. The proposal should be clear, specific to the prospect's situation, and focused on business outcomes — not technical specs. Write in a confident but approachable tone. This is a small business talking to another small business.`,
       messages: [{
