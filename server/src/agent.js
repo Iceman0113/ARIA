@@ -1,6 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { TOOL_DEFINITIONS, callTool } from './tools.js';
 import { buildMemoryBlock, addSession } from './memory.js';
+import { getClient } from './anthropic.js';
 import { broadcast } from './index.js';
 
 const DELEGATE_TO_SLUG = {
@@ -8,12 +8,6 @@ const DELEGATE_TO_SLUG = {
   delegate_to_hunter:   'hunter',
   delegate_to_creative: 'creative',
   delegate_to_hermes:   'hermes',
-};
-
-let _client = null;
-const getClient = () => {
-  if (!_client) _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  return _client;
 };
 
 const buildSystemPrompt = async (context = {}) => {

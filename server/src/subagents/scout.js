@@ -1,9 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { WEB_TOOLS, webSearch, fetchPage } from './shared.js';
-
-// Lazy — env vars aren't loaded yet at module-eval time
-let _client = null;
-const getClient = () => _client ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+import { getClient } from '../anthropic.js';
 
 const SYSTEM = `You are Scout — ARIA's intelligence and research sub-agent.
 

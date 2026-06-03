@@ -3,7 +3,7 @@ import * as cheerio from 'cheerio';
 import crypto from 'crypto';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import Stripe from 'stripe';
-import Anthropic from '@anthropic-ai/sdk';
+import { getClient } from './anthropic.js';
 import { upsertEntry, resolveIssue, getMemory } from './memory.js';
 import { getClients, upsertClient } from './clients.js';
 import { runScout } from './subagents/scout.js';
@@ -11,8 +11,6 @@ import { runHunter } from './subagents/hunter.js';
 import { runCreative } from './subagents/creative.js';
 import { runHermes } from './subagents/hermes.js';
 import { publishPost as publishLinkedInPost, loadAuth as loadLinkedInAuth, getTargets as getLinkedInTargets } from './linkedin.js';
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // ── Tool definitions for Claude ───────────────────────────────────
 
@@ -466,7 +464,7 @@ async function draftConversionEmail({ client_name, client_context, recommended_t
   const tier = tierDetails[recommended_tier] || tierDetails.starter;
 
   try {
-    const response = await anthropic.messages.create({
+    const response = await getClient().messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 800,
       system: `You are writing a professional email on behalf of Randy at Jack & Jewell Consulting LLC, based in Greenwood, Indiana. Randy has an existing relationship with this client through break-fix IT work and is proposing a shift to a monthly managed services retainer. The email should be warm, direct, and specific — not generic. It should feel like it came from a person who knows the client, not a template. No fluff, no hard sell. Focus on their specific situation and the value of predictable IT costs. Sign it as Randy.`,
@@ -514,7 +512,7 @@ async function generateProposal({ prospect_name, call_notes, recommended_tier, u
   const tier = tierDetails[recommended_tier] || tierDetails.starter;
 
   try {
-    const response = await anthropic.messages.create({
+    const response = await getClient().messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1500,
       system: `You are writing a professional managed services proposal on behalf of Randy at Jack & Jewell Consulting LLC, based in Greenwood, Indiana. The proposal should be clear, specific to the prospect's situation, and focused on business outcomes — not technical specs. Write in a confident but approachable tone. This is a small business talking to another small business.`,
