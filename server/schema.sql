@@ -141,3 +141,65 @@ VALUES (
   }'
 )
 ON CONFLICT DO NOTHING;
+
+-- ── Agent Factory ─────────────────────────────────────────────────
+-- (Spec §3)
+
+CREATE TABLE IF NOT EXISTS spawn_tasks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+  requested_by TEXT NOT NULL,
+  name_hint TEXT NOT NULL,
+  role_description TEXT NOT NULL,
+  special_requirements TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  research_report_id UUID,
+  proposed_manifest JSONB,
+  approval_iterations INT DEFAULT 0,
+  revision_feedback TEXT,
+  error TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS spawned_agents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+  slug TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  specialty TEXT NOT NULL,
+  system_prompt TEXT NOT NULL,
+  tool_allowlist JSONB NOT NULL DEFAULT '[]',
+  model TEXT NOT NULL DEFAULT 'claude-sonnet-4-6',
+  status TEXT NOT NULL DEFAULT 'shadow',
+  created_by_task_id UUID REFERENCES spawn_tasks(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS research_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  query_hash TEXT NOT NULL,
+  domain TEXT NOT NULL,
+  report JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(query_hash)
+);
+CREATE INDEX IF NOT EXISTS idx_research_reports_recent
+  ON research_reports(created_at DESC);
+
+ALTER TABLE spawn_tasks      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE spawned_agents   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE research_reports ENABLE ROW LEVEL SECURITY;
+
+-- Realtime publication — idempotent, safe to re-run
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'spawned_agents'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime
+      ADD TABLE spawn_tasks, spawned_agents, research_reports;
+  END IF;
+END $$;
