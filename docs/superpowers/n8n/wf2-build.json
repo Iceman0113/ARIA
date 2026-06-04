@@ -100,7 +100,7 @@
       "typeVersion": 2,
       "position": [1200, 300],
       "parameters": {
-        "jsCode": "// ── FILL THESE IN from Task 0 (curl the Printify catalog) ──\nconst PROVIDER_ID = 0;                  // TODO <<PROVIDER_ID>>\nconst VARIANTS    = [0, 0, 0, 0, 0];    // TODO <<VARIANT_ID_1..5>> (S,M,L,XL,2XL)\nconst PRICES      = [2499, 2499, 2499, 2499, 2699]; // cents; tune later\n// ───────────────────────────────────────────────────────────\nconst uploadId = $json.id;\nconst title = $('Build Image Req').item.json.title;\nconst description = $('Build Image Req').item.json.description;\nconst variants = VARIANTS.map((id, i) => ({ id, price: PRICES[i], is_enabled: true }));\nconst body = JSON.stringify({ title, description, blueprint_id: 6, print_provider_id: PROVIDER_ID, variants, print_areas: [{ variant_ids: VARIANTS, placeholders: [{ position: \"front\", images: [{ id: uploadId, x: 0.5, y: 0.5, scale: 1.0, angle: 0 }] }] }] });\nreturn [{ json: { body } }];"
+        "jsCode": "// ── Printify IDs (filled 2026-06-04 from catalog) ──\nconst PROVIDER_ID = 29;                  // Monster Digital\nconst VARIANTS    = [12102, 12101, 12100, 12103, 12104]; // White S,M,L,XL,2XL\nconst PRICES      = [2499, 2499, 2499, 2499, 2699]; // cents; tune later\n// ───────────────────────────────────────────────────────────\nconst uploadId = $json.id;\nconst title = $('Build Image Req').item.json.title;\nconst description = $('Build Image Req').item.json.description;\nconst variants = VARIANTS.map((id, i) => ({ id, price: PRICES[i], is_enabled: true }));\nconst body = JSON.stringify({ title, description, blueprint_id: 6, print_provider_id: PROVIDER_ID, variants, print_areas: [{ variant_ids: VARIANTS, placeholders: [{ position: \"front\", images: [{ id: uploadId, x: 0.5, y: 0.5, scale: 1.0, angle: 0 }] }] }] });\nreturn [{ json: { body } }];"
       }
     },
     {
@@ -111,7 +111,7 @@
       "position": [1420, 300],
       "parameters": {
         "method": "POST",
-        "url": "https://api.printify.com/v1/shops/<<SHOP_ID>>/products.json",
+        "url": "https://api.printify.com/v1/shops/27681721/products.json",
         "sendHeaders": true,
         "headerParameters": { "parameters": [ { "name": "content-type", "value": "application/json" } ] },
         "sendBody": true,

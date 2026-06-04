@@ -45,14 +45,13 @@ Everything else maps to fields you already have: `Name` (the idea/slogan), `Titl
 
 (The Anthropic credential is already on your existing flow.)
 
-## Placeholders left to fill (only Printify)
+## Placeholders — all filled ✅
 
-The Airtable base/table are already baked in. Remaining `<<...>>` / `TODO`:
-
-| Placeholder | Where | Value (from Task 0 Printify curls) |
-|---|---|---|
-| `<<SHOP_ID>>` | WF2 "Printify Create Product" URL · WF3 "Printify Publish" + "Get Product" URLs | your Etsy-connected Printify shop id |
-| `PROVIDER_ID`, `VARIANTS`, `PRICES` | **WF2 → "Build Product Req"** Code node (TODO block) | blueprint-6 provider + 5 variant ids |
+Everything is baked in (2026-06-04): base `app9HMypY5XkOlD9N` / table `Products`,
+Printify shop `27681721` (your Etsy store), provider `29` (Monster Digital), variants
+`12102/12101/12100/12103/12104` (Bella+Canvas 3001, White, S–2XL) at $24.99 (2XL $26.99).
+Nothing to paste. To change color/sizes/prices later, edit the constants in WF2's
+"Build Product Req" Code node.
 
 ## Import + test
 
