@@ -34,6 +34,13 @@ export function mountFactoryRoutes(app, broadcast) {
         return res.status(409).json({ error: `task is in status '${task.status}', not approvable` });
       }
       const p = task.proposed_manifest;
+      // Guard the UNIQUE(slug) constraint with a friendly 409 instead of letting
+      // insertAgent surface a raw Postgres duplicate-key 500 (e.g. approving two
+      // tasks that proposed the same slug).
+      const existing = await repo.getAgentBySlug(p.slug);
+      if (existing) {
+        return res.status(409).json({ error: `an agent with slug '${p.slug}' already exists` });
+      }
       const agent = {
         tenant_id: task.tenant_id,
         slug: p.slug,

@@ -8,6 +8,11 @@ const tasks = {
     tool_allowlist: ['web_search'], model: 'claude-sonnet-4-6',
   }, approval_iterations: 0 },
   'pending-1': { id: 'pending-1', status: 'pending', tenant_id: 't1' },
+  'awaiting-dup': { id: 'awaiting-dup', status: 'awaiting_approval', tenant_id: 't1', proposed_manifest: {
+    slug: 'taken', name: 'Taken', specialty: 'x',
+    system_prompt: 'You are Taken. ' + 'word '.repeat(220),
+    tool_allowlist: ['web_search'], model: 'claude-sonnet-4-6',
+  }, approval_iterations: 0 },
 };
 const agents = {};
 
@@ -68,6 +73,24 @@ describe('factory routes', () => {
     const added = broadcasts.find(b => b.kind === 'agent_added');
     expect(added).toBeTruthy();
     expect(added.created_by_task_id).toBe('awaiting-1');
+  });
+
+  it('POST approve returns 409 (not a 500 DB error) when that slug already exists', async () => {
+    const { mountFactoryRoutes } = await import('../src/factory/routes.js');
+    const { default: supertest } = await import('supertest');
+    const app = makeApp();
+    mountFactoryRoutes(app, (e) => broadcasts.push(e));
+    tasks['awaiting-dup'].status = 'awaiting_approval';
+    agents['taken'] = { slug: 'taken', name: 'Taken', status: 'shadow' };
+    try {
+      const res = await supertest(app).post('/factory/tasks/awaiting-dup/approve');
+      expect(res.status).toBe(409);
+      expect(res.body.error).toMatch(/already exists/i);
+      // must not have transitioned or double-inserted
+      expect(tasks['awaiting-dup'].status).toBe('awaiting_approval');
+    } finally {
+      delete agents['taken'];
+    }
   });
 
   it('GET /factory/pending returns awaiting_approval tasks', async () => {
