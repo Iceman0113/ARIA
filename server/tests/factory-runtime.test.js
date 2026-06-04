@@ -20,6 +20,7 @@ vi.mock('../src/tools.js', () => ({
     { name: 'delegate_to_hermes', factory_allowed: false, description: 'd', input_schema: { type: 'object', properties: {} } },
   ],
   callTool: vi.fn(async (name) => ({ ok: true, name })),
+  toApiTools: (defs) => defs.map(t => ({ name: t.name, description: t.description, input_schema: t.input_schema })),
 }));
 
 beforeEach(() => {
@@ -43,6 +44,11 @@ describe('ConfigDrivenAgent', () => {
     // Inspect the tools passed to messages.create
     const passedTools = lastCallArgs.tools.map(t => t.name);
     expect(passedTools).toEqual(['web_search']);
+    // Tools handed to the API must NOT carry internal metadata (Anthropic 400s
+    // on unknown keys like factory_allowed) — this is the F5 dispatch path.
+    for (const t of lastCallArgs.tools) {
+      expect(t).not.toHaveProperty('factory_allowed');
+    }
   });
 
   it('prefixes [SHADOW] log when status === shadow', async () => {

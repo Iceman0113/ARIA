@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TOOL_DEFINITIONS } from '../src/tools.js';
+import { TOOL_DEFINITIONS, toApiTools } from '../src/tools.js';
 
 const BLOCKED = new Set([
   'publish_to_linkedin',
@@ -42,5 +42,28 @@ describe('factory_allowed field on every tool', () => {
     expect(ws).toBeTruthy();
     expect(ws.factory_allowed).toBe(true);
     expect(ws.input_schema.required).toContain('query');
+  });
+});
+
+describe('toApiTools strips internal metadata before the Anthropic API', () => {
+  // Regression: the Messages API rejects unknown keys on tool defs with
+  // "tools.0.custom.factory_allowed: Extra inputs are not permitted". Our defs
+  // carry internal metadata (factory_allowed) that MUST be stripped before the
+  // tools array crosses the API boundary (agent.js + factory/runtime.js).
+  it('keeps only name, description, input_schema — drops factory_allowed', () => {
+    const apiTools = toApiTools(TOOL_DEFINITIONS);
+    expect(apiTools.length).toBe(TOOL_DEFINITIONS.length);
+    for (const t of apiTools) {
+      expect(Object.keys(t).sort()).toEqual(['description', 'input_schema', 'name']);
+      expect(t).not.toHaveProperty('factory_allowed');
+    }
+  });
+
+  it('preserves the name, description, and input_schema values', () => {
+    const src = TOOL_DEFINITIONS.find(t => t.name === 'web_search');
+    const out = toApiTools([src])[0];
+    expect(out.name).toBe(src.name);
+    expect(out.description).toBe(src.description);
+    expect(out.input_schema).toEqual(src.input_schema);
   });
 });

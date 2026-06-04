@@ -317,6 +317,21 @@ export function getActiveToolDefinitions() {
   return [...TOOL_DEFINITIONS, ...factoryRegistry.getDynamicDefinitions()];
 }
 
+/**
+ * Project tool definitions down to the exact shape the Anthropic Messages API
+ * accepts: { name, description, input_schema }. Our defs also carry internal
+ * metadata such as `factory_allowed`, which the API rejects with
+ * "tools.0.custom.factory_allowed: Extra inputs are not permitted". Always pass
+ * tools through this before handing them to messages.create / messages.stream.
+ */
+export function toApiTools(defs) {
+  return defs.map(t => ({
+    name: t.name,
+    description: t.description,
+    input_schema: t.input_schema,
+  }));
+}
+
 // ── Tool dispatcher ───────────────────────────────────────────────
 
 export async function callTool(name, input, onEvent, broadcast = () => {}, ctx) {

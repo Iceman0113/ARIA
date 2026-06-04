@@ -1,5 +1,5 @@
 import { getClient } from '../anthropic.js';
-import { TOOL_DEFINITIONS, callTool } from '../tools.js';
+import { TOOL_DEFINITIONS, callTool, toApiTools } from '../tools.js';
 
 const MAX_ITER = Number(process.env.FACTORY_RUNTIME_MAX_ITER || 8);
 
@@ -26,7 +26,7 @@ export class ConfigDrivenAgent {
   }
 
   async run(userMessage, onEvent) {
-    const tools = this._filteredTools();
+    const tools = toApiTools(this._filteredTools());
     const messages = [{ role: 'user', content: userMessage }];
     const shadow = this._row.status === 'shadow';
     const tag = shadow ? '[SHADOW] ' : '';

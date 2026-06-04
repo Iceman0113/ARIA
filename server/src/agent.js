@@ -1,4 +1,4 @@
-import { callTool, getActiveToolDefinitions } from './tools.js';
+import { callTool, getActiveToolDefinitions, toApiTools } from './tools.js';
 import { buildMemoryBlock, addSession } from './memory.js';
 import { getClient } from './anthropic.js';
 
@@ -135,7 +135,7 @@ export async function runAgent(userText, history, context, onEvent, broadcast) {
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: systemPrompt,
-      tools: getActiveToolDefinitions(),
+      tools: toApiTools(getActiveToolDefinitions()),
       messages,
     });
     // Real-time streaming: forward Claude's text deltas to the client the instant
