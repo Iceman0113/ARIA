@@ -11,15 +11,11 @@ This replaces the scattered phase notes in `CONTEXT.md` and `docs/superpowers/*`
 - **Phase 1 — Core agent + HUD** — ARIA agent loop, cosmic-orb HUD, tool suite (MRR/revenue/clients/memory/competitors/email/proposal/Buffer + Scout/Hunter/Creative sub-agents).
 - **Phase: UI revamp** — on `feat/aria-ui-revamp-and-factory`.
 - **Phase: Agent Factory** — research → spec/prompt → human approval → hot-register `dispatch_to_<slug>` tools from Postgres, zero restarts. Shadow→active→archived lifecycle, 3 containment layers. Server 77/77, client 48/48. PR #1 merged. **Echo** spawned as first live agent. See [PHASE-COMPLETE-agent-factory.md](docs/superpowers/PHASE-COMPLETE-agent-factory.md).
+- **Phase A — Promote to `main`** ✅ 2026-06-04 — revamp+factory line is now the default branch (`d9f6789`). During cutover, discovered a stray PWA commit (`79d8a99`, May 25) that had been sitting on `origin/main` and was never picked up by the revamp line; merged it in (resolved `package.json`, regenerated lockfile, verified `vite build` emits `sw.js`). `main` and `feat/aria-ui-revamp-and-factory` are now in sync. `feat/aria-agent-factory` is stale (left at `9004b63`) — safe to delete.
 
 ---
 
 ## 🔜 Next (no committed order — pick when starting a session)
-
-### Phase A — Promote to `main`
-Get `feat/aria-ui-revamp-and-factory` (revamp + factory, **86 commits** ahead of `origin/main`) onto the default branch. Nothing factory-related has shipped to `main` yet — this is a deliberate cutover, not automatic.
-- **Done when:** `main` == revamp+factory line, pushed to origin, dev server runs clean off `main`.
-- **Risk:** low (fully merged + tested), but it's the live branch — coordinate with running dev servers.
 
 ### Phase B — Build out Echo for real
 Echo reasons well but has **no actual PDF tools**. Wire the PDF-ingest/extraction tools from Echo's `tools_wishlist`.
