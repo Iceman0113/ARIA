@@ -1,0 +1,132 @@
+{
+  "name": "Forge WF3 — Publish to Etsy",
+  "active": false,
+  "settings": {},
+  "pinData": {},
+  "nodes": [
+    {
+      "id": "wf3-trigger",
+      "name": "Airtable Trigger",
+      "type": "n8n-nodes-base.airtableTrigger",
+      "typeVersion": 1,
+      "position": [-120, 300],
+      "parameters": {
+        "baseId": { "__rl": true, "value": "<<AIRTABLE_BASE_ID>>", "mode": "id" },
+        "tableId": { "__rl": true, "value": "Items", "mode": "id" },
+        "triggerField": "Last Modified",
+        "pollTimes": { "item": [ { "mode": "everyMinute" } ] }
+      },
+      "credentials": { "airtableTokenApi": { "name": "Airtable account" } }
+    },
+    {
+      "id": "wf3-filter",
+      "name": "Filter Publish",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose" },
+          "combinator": "and",
+          "conditions": [
+            { "leftValue": "={{ ($json.fields || $json)[\"Publish\"] }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } },
+            { "leftValue": "={{ ($json.fields || $json)[\"Etsy Listing ID\"] }}", "rightValue": "", "operator": { "type": "string", "operation": "empty", "singleValue": true } }
+          ]
+        }
+      }
+    },
+    {
+      "id": "wf3-stash",
+      "name": "Stash IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, 300],
+      "parameters": {
+        "jsCode": "const f = $json.fields || $json;\nreturn [{ json: { recordId: $json.id, productId: f[\"Printify Product ID\"] } }];"
+      }
+    },
+    {
+      "id": "wf3-publish",
+      "name": "Printify Publish",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [540, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.printify.com/v1/shops/<<SHOP_ID>>/products/{{ $json.productId }}/publish.json",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "content-type", "value": "application/json" } ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: true, description: true, images: true, variants: true, tags: true, keyFeatures: true, shipping_template: true }) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": { "httpHeaderAuth": { "name": "Printify token" } }
+    },
+    {
+      "id": "wf3-wait",
+      "name": "Wait for Etsy",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [760, 300],
+      "parameters": { "amount": 15, "unit": "seconds" }
+    },
+    {
+      "id": "wf3-get",
+      "name": "Get Product",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.printify.com/v1/shops/<<SHOP_ID>>/products/{{ $('Stash IDs').item.json.productId }}.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": { "httpHeaderAuth": { "name": "Printify token" } }
+    },
+    {
+      "id": "wf3-buildupd",
+      "name": "Build Update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 300],
+      "parameters": {
+        "jsCode": "const ext = $json.external || {};\nreturn [{ json: { recordId: $('Stash IDs').item.json.recordId, etsyId: ext.id || \"\", publishedAt: new Date().toISOString(), Status: ext.id ? \"Published\" : \"Built\" } }];"
+      }
+    },
+    {
+      "id": "wf3-update",
+      "name": "Update Record",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [1420, 300],
+      "parameters": {
+        "operation": "update",
+        "base": { "__rl": true, "value": "<<AIRTABLE_BASE_ID>>", "mode": "id" },
+        "table": { "__rl": true, "value": "Items", "mode": "id" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": ["id"],
+          "value": {
+            "id": "={{ $json.recordId }}",
+            "Etsy Listing ID": "={{ $json.etsyId }}",
+            "Published At": "={{ $json.publishedAt }}",
+            "Status": "={{ $json.Status }}"
+          }
+        }
+      },
+      "credentials": { "airtableTokenApi": { "name": "Airtable account" } }
+    }
+  ],
+  "connections": {
+    "Airtable Trigger": { "main": [ [ { "node": "Filter Publish", "type": "main", "index": 0 } ] ] },
+    "Filter Publish": { "main": [ [ { "node": "Stash IDs", "type": "main", "index": 0 } ] ] },
+    "Stash IDs": { "main": [ [ { "node": "Printify Publish", "type": "main", "index": 0 } ] ] },
+    "Printify Publish": { "main": [ [ { "node": "Wait for Etsy", "type": "main", "index": 0 } ] ] },
+    "Wait for Etsy": { "main": [ [ { "node": "Get Product", "type": "main", "index": 0 } ] ] },
+    "Get Product": { "main": [ [ { "node": "Build Update", "type": "main", "index": 0 } ] ] },
+    "Build Update": { "main": [ [ { "node": "Update Record", "type": "main", "index": 0 } ] ] }
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "name": "Forge WF2 — Render + Build Draft",
+  "active": false,
+  "settings": {},
+  "pinData": {},
+  "nodes": [
+    {
+      "id": "wf2-trigger",
+      "name": "Airtable Trigger",
+      "type": "n8n-nodes-base.airtableTrigger",
+      "typeVersion": 1,
+      "position": [-120, 300],
+      "parameters": {
+        "baseId": { "__rl": true, "value": "<<AIRTABLE_BASE_ID>>", "mode": "id" },
+        "tableId": { "__rl": true, "value": "Items", "mode": "id" },
+        "triggerField": "Last Modified",
+        "pollTimes": { "item": [ { "mode": "everyMinute" } ] }
+      },
+      "credentials": { "airtableTokenApi": { "name": "Airtable account" } }
+    },
+    {
+      "id": "wf2-filter",
+      "name": "Filter Concept OK",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose" },
+          "combinator": "and",
+          "conditions": [
+            { "leftValue": "={{ ($json.fields || $json)[\"Concept OK\"] }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } },
+            { "leftValue": "={{ ($json.fields || $json)[\"Printify Product ID\"] }}", "rightValue": "", "operator": { "type": "string", "operation": "empty", "singleValue": true } }
+          ]
+        }
+      }
+    },
+    {
+      "id": "wf2-buildimg",
+      "name": "Build Image Req",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, 300],
+      "parameters": {
+        "jsCode": "const f = $json.fields || $json;\nconst body = JSON.stringify({ model: \"gpt-image-1\", prompt: f[\"Image Prompt\"], size: \"1024x1024\", background: \"transparent\", n: 1 });\nreturn [{ json: { body, recordId: $json.id, title: f[\"Title\"], description: f[\"Description\"] } }];"
+      }
+    },
+    {
+      "id": "wf2-image",
+      "name": "gpt-image-1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [540, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/images/generations",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "content-type", "value": "application/json" } ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.body }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": { "httpHeaderAuth": { "name": "OpenAI Bearer" } }
+    },
+    {
+      "id": "wf2-builduzip",
+      "name": "Build Upload Req",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 300],
+      "parameters": {
+        "jsCode": "const b64 = $json.data[0].b64_json;\nconst body = JSON.stringify({ file_name: \"forge-design.png\", contents: b64 });\nreturn [{ json: { body } }];"
+      }
+    },
+    {
+      "id": "wf2-upload",
+      "name": "Printify Upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.printify.com/v1/uploads/images.json",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "content-type", "value": "application/json" } ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.body }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": { "httpHeaderAuth": { "name": "Printify token" } }
+    },
+    {
+      "id": "wf2-buildprod",
+      "name": "Build Product Req",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 300],
+      "parameters": {
+        "jsCode": "// ── FILL THESE IN from Task 0 (curl the Printify catalog) ──\nconst PROVIDER_ID = 0;                  // TODO <<PROVIDER_ID>>\nconst VARIANTS    = [0, 0, 0, 0, 0];    // TODO <<VARIANT_ID_1..5>> (S,M,L,XL,2XL)\nconst PRICES      = [2499, 2499, 2499, 2499, 2699]; // cents; tune later\n// ───────────────────────────────────────────────────────────\nconst uploadId = $json.id;\nconst title = $('Build Image Req').item.json.title;\nconst description = $('Build Image Req').item.json.description;\nconst variants = VARIANTS.map((id, i) => ({ id, price: PRICES[i], is_enabled: true }));\nconst body = JSON.stringify({ title, description, blueprint_id: 6, print_provider_id: PROVIDER_ID, variants, print_areas: [{ variant_ids: VARIANTS, placeholders: [{ position: \"front\", images: [{ id: uploadId, x: 0.5, y: 0.5, scale: 1.0, angle: 0 }] }] }] });\nreturn [{ json: { body } }];"
+      }
+    },
+    {
+      "id": "wf2-createprod",
+      "name": "Printify Create Product",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1420, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.printify.com/v1/shops/<<SHOP_ID>>/products.json",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "content-type", "value": "application/json" } ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.body }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": { "httpHeaderAuth": { "name": "Printify token" } }
+    },
+    {
+      "id": "wf2-buildupd",
+      "name": "Build Update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1640, 300],
+      "parameters": {
+        "jsCode": "const productId = $json.id;\nconst mockups = ($json.images || []).map(m => ({ url: m.src }));\nreturn [{ json: { recordId: $('Build Image Req').item.json.recordId, productId, mockups, Status: \"Built\" } }];"
+      }
+    },
+    {
+      "id": "wf2-update",
+      "name": "Update Record",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [1860, 300],
+      "parameters": {
+        "operation": "update",
+        "base": { "__rl": true, "value": "<<AIRTABLE_BASE_ID>>", "mode": "id" },
+        "table": { "__rl": true, "value": "Items", "mode": "id" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": ["id"],
+          "value": {
+            "id": "={{ $json.recordId }}",
+            "Printify Product ID": "={{ $json.productId }}",
+            "Mockups": "={{ $json.mockups }}",
+            "Status": "={{ $json.Status }}"
+          }
+        }
+      },
+      "credentials": { "airtableTokenApi": { "name": "Airtable account" } }
+    }
+  ],
+  "connections": {
+    "Airtable Trigger": { "main": [ [ { "node": "Filter Concept OK", "type": "main", "index": 0 } ] ] },
+    "Filter Concept OK": { "main": [ [ { "node": "Build Image Req", "type": "main", "index": 0 } ] ] },
+    "Build Image Req": { "main": [ [ { "node": "gpt-image-1", "type": "main", "index": 0 } ] ] },
+    "gpt-image-1": { "main": [ [ { "node": "Build Upload Req", "type": "main", "index": 0 } ] ] },
+    "Build Upload Req": { "main": [ [ { "node": "Printify Upload", "type": "main", "index": 0 } ] ] },
+    "Printify Upload": { "main": [ [ { "node": "Build Product Req", "type": "main", "index": 0 } ] ] },
+    "Build Product Req": { "main": [ [ { "node": "Printify Create Product", "type": "main", "index": 0 } ] ] },
+    "Printify Create Product": { "main": [ [ { "node": "Build Update", "type": "main", "index": 0 } ] ] },
+    "Build Update": { "main": [ [ { "node": "Update Record", "type": "main", "index": 0 } ] ] }
+  }
+}
