@@ -11,8 +11,8 @@
       "typeVersion": 1,
       "position": [-120, 300],
       "parameters": {
-        "baseId": { "__rl": true, "value": "<<AIRTABLE_BASE_ID>>", "mode": "id" },
-        "tableId": { "__rl": true, "value": "Items", "mode": "id" },
+        "baseId": { "__rl": true, "value": "app9HMypY5XkOlD9N", "mode": "id" },
+        "tableId": { "__rl": true, "value": "tblZkGoYmTblzII7O", "mode": "id" },
         "triggerField": "Last Modified",
         "pollTimes": { "item": [ { "mode": "everyMinute" } ] }
       },
@@ -42,7 +42,7 @@
       "typeVersion": 2,
       "position": [320, 300],
       "parameters": {
-        "jsCode": "const f = $json.fields || $json;\nreturn [{ json: { recordId: $json.id, productId: f[\"Printify Product ID\"] } }];"
+        "jsCode": "const f = $json.fields || $json;\nreturn [{ json: { recordId: $json.id, productId: f[\"Printify ID\"] } }];"
       }
     },
     {
@@ -93,7 +93,7 @@
       "typeVersion": 2,
       "position": [1200, 300],
       "parameters": {
-        "jsCode": "const ext = $json.external || {};\nreturn [{ json: { recordId: $('Stash IDs').item.json.recordId, etsyId: ext.id || \"\", publishedAt: new Date().toISOString(), Status: ext.id ? \"Published\" : \"Built\" } }];"
+        "jsCode": "const ext = $json.external || {};\nreturn [{ json: { recordId: $('Stash IDs').item.json.recordId, etsyId: ext.id || \"\", Status: ext.id ? \"live\" : \"Built\" } }];"
       }
     },
     {
@@ -104,15 +104,14 @@
       "position": [1420, 300],
       "parameters": {
         "operation": "update",
-        "base": { "__rl": true, "value": "<<AIRTABLE_BASE_ID>>", "mode": "id" },
-        "table": { "__rl": true, "value": "Items", "mode": "id" },
+        "base": { "__rl": true, "value": "app9HMypY5XkOlD9N", "mode": "id" },
+        "table": { "__rl": true, "value": "tblZkGoYmTblzII7O", "mode": "id" },
         "columns": {
           "mappingMode": "defineBelow",
           "matchingColumns": ["id"],
           "value": {
             "id": "={{ $json.recordId }}",
             "Etsy Listing ID": "={{ $json.etsyId }}",
-            "Published At": "={{ $json.publishedAt }}",
             "Status": "={{ $json.Status }}"
           }
         }

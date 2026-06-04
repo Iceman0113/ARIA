@@ -11,8 +11,8 @@
       "typeVersion": 1,
       "position": [-120, 300],
       "parameters": {
-        "baseId": { "__rl": true, "value": "<<AIRTABLE_BASE_ID>>", "mode": "id" },
-        "tableId": { "__rl": true, "value": "Items", "mode": "id" },
+        "baseId": { "__rl": true, "value": "app9HMypY5XkOlD9N", "mode": "id" },
+        "tableId": { "__rl": true, "value": "tblZkGoYmTblzII7O", "mode": "id" },
         "triggerField": "Last Modified",
         "pollTimes": { "item": [ { "mode": "everyMinute" } ] }
       },
@@ -30,7 +30,7 @@
           "combinator": "and",
           "conditions": [
             { "leftValue": "={{ ($json.fields || $json)[\"Concept OK\"] }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } },
-            { "leftValue": "={{ ($json.fields || $json)[\"Printify Product ID\"] }}", "rightValue": "", "operator": { "type": "string", "operation": "empty", "singleValue": true } }
+            { "leftValue": "={{ ($json.fields || $json)[\"Printify ID\"] }}", "rightValue": "", "operator": { "type": "string", "operation": "empty", "singleValue": true } }
           ]
         }
       }
@@ -140,14 +140,14 @@
       "position": [1860, 300],
       "parameters": {
         "operation": "update",
-        "base": { "__rl": true, "value": "<<AIRTABLE_BASE_ID>>", "mode": "id" },
-        "table": { "__rl": true, "value": "Items", "mode": "id" },
+        "base": { "__rl": true, "value": "app9HMypY5XkOlD9N", "mode": "id" },
+        "table": { "__rl": true, "value": "tblZkGoYmTblzII7O", "mode": "id" },
         "columns": {
           "mappingMode": "defineBelow",
           "matchingColumns": ["id"],
           "value": {
             "id": "={{ $json.recordId }}",
-            "Printify Product ID": "={{ $json.productId }}",
+            "Printify ID": "={{ $json.productId }}",
             "Mockups": "={{ $json.mockups }}",
             "Status": "={{ $json.Status }}"
           }

@@ -3,7 +3,7 @@ const API = 'https://api.airtable.com/v0';
 export function makeAirtable({
   apiKey = process.env.AIRTABLE_API_KEY,
   baseId = process.env.AIRTABLE_BASE_ID,
-  table = 'Items',
+  table = 'Products',
   fetchImpl = fetch,
 } = {}) {
   async function listItems() {

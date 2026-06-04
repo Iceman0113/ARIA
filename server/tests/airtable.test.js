@@ -4,7 +4,7 @@ import { makeAirtable } from '../src/airtable.js';
 describe('airtable client', () => {
   it('lists items mapping record id + fields into flat objects', async () => {
     const fakeFetch = async (url, opts) => {
-      expect(url).toBe('https://api.airtable.com/v0/appTEST/Items');
+      expect(url).toBe('https://api.airtable.com/v0/appTEST/Products');
       expect(opts.headers.Authorization).toBe('Bearer key123');
       return {
         ok: true,
