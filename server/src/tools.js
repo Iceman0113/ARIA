@@ -14,6 +14,8 @@ import { webSearch } from './subagents/shared.js';
 import { publishPost as publishLinkedInPost, loadAuth as loadLinkedInAuth, getTargets as getLinkedInTargets } from './linkedin.js';
 import { delegateToFactory } from './factory/delegate.js';
 import { factoryRegistry } from './factory/tool-registry.js';
+import { makeAirtable } from './airtable.js';
+import { summarizeMerch } from './forge-report.js';
 
 // ── Tool definitions for Claude ───────────────────────────────────
 
@@ -306,6 +308,16 @@ export const TOOL_DEFINITIONS = [
     },
     factory_allowed: false,
   },
+  {
+    name: 'get_merch_status',
+    description: "Report the Etsy print-on-demand store (Forge): how many designs are pending each approval gate (concept vs publish), how many are published, and listed revenue per sale. Use when asked about the merch, Etsy, print-on-demand store, or Forge.",
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+    factory_allowed: false,
+  },
 ];
 
 /**
@@ -364,6 +376,11 @@ export async function callTool(name, input, onEvent, broadcast = () => {}, ctx) 
     case 'publish_to_linkedin':    return publishLinkedInPost(input);
     case 'get_linkedin_targets':   return getLinkedInTargets();
     case 'web_search':             return webSearch(input.query);
+    case 'get_merch_status': {
+      const at = makeAirtable();
+      const items = await at.listItems();
+      return summarizeMerch(items);
+    }
     case 'check_linkedin_connection': {
       const auth = await loadLinkedInAuth();
       if (!auth) return { connected: false, action: 'Visit http://localhost:3001/auth/linkedin to authorize.' };
