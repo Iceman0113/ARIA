@@ -8,8 +8,9 @@ fields and your copy-drafting flow; Forge adds the art + Printify build + publis
 
 - `wf1-existing-flow-enhancement.md` — **WF1**: two tiny edits to your *existing*
   copy-drafting flow so it also outputs an `Image Prompt`. (No new flow to import.)
-- `wf2-build.json` — **WF2** (new): `Concept OK` ticked → gpt-image-1 renders art →
-  Printify uploads + creates a **draft** product → mockups written back, `Status = Built`.
+- `wf2-build.json` — **WF2** (new): `Concept OK` ticked → **Ideogram (via Replicate)**
+  renders art → Printify uploads it by URL + creates a **draft** product → mockups
+  written back, `Status = Built`.
 - `wf3-publish.json` — **WF3** (new): `Publish` ticked → Printify publishes to Etsy →
   `Etsy Listing ID` written back, `Status = live`.
 
@@ -40,8 +41,11 @@ Everything else maps to fields you already have: `Name` (the idea/slogan), `Titl
 | Node credential slot | Credential type | Holds |
 |---|---|---|
 | `Airtable account` | Airtable PAT | your `patwK...` token (already proven to work) |
-| `OpenAI Bearer` | Header Auth | `Authorization` = `Bearer <OPENAI_API_KEY>` |
-| `Printify token` | Header Auth | `Authorization` = `Bearer <PRINTIFY_API_TOKEN>` |
+| `Replicate token` | Header Auth | `Authorization` = `Bearer <REPLICATE_TOKEN r8_...>` (Ideogram) |
+| `Printify token` | Header Auth | `Authorization` = `Bearer <PRINTIFY_API_TOKEN>` (the JWT) |
+
+> Credential **names** don't have to match — on import you pick a credential per node
+> from a dropdown, so whatever you named them (e.g. "ARIA") is fine.
 
 (The Anthropic credential is already on your existing flow.)
 

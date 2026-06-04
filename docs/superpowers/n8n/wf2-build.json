@@ -42,27 +42,30 @@
       "typeVersion": 2,
       "position": [320, 300],
       "parameters": {
-        "jsCode": "const f = $json.fields || $json;\nconst body = JSON.stringify({ model: \"gpt-image-1\", prompt: f[\"Image Prompt\"], size: \"1024x1024\", background: \"transparent\", n: 1 });\nreturn [{ json: { body, recordId: $json.id, title: f[\"Title\"], description: f[\"Description\"] } }];"
+        "jsCode": "const f = $json.fields || $json;\nconst prompt = (f[\"Image Prompt\"] || \"\") + \" — centered t-shirt graphic on a plain white background, vector sticker style, bold legible text, high contrast, no shirt mockup\";\nconst body = JSON.stringify({ input: { prompt, aspect_ratio: \"1:1\" } });\nreturn [{ json: { body, recordId: $json.id, title: f[\"Title\"], description: f[\"Description\"] } }];"
       }
     },
     {
-      "id": "wf2-image",
-      "name": "gpt-image-1",
+      "id": "wf2-ideogram",
+      "name": "Ideogram",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [540, 300],
       "parameters": {
         "method": "POST",
-        "url": "https://api.openai.com/v1/images/generations",
+        "url": "https://api.replicate.com/v1/models/ideogram-ai/ideogram-v3-turbo/predictions",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [ { "name": "content-type", "value": "application/json" } ] },
+        "headerParameters": { "parameters": [
+          { "name": "content-type", "value": "application/json" },
+          { "name": "Prefer", "value": "wait" }
+        ] },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json.body }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth"
       },
-      "credentials": { "httpHeaderAuth": { "name": "OpenAI Bearer" } }
+      "credentials": { "httpHeaderAuth": { "name": "Replicate token" } }
     },
     {
       "id": "wf2-builduzip",
@@ -71,7 +74,7 @@
       "typeVersion": 2,
       "position": [760, 300],
       "parameters": {
-        "jsCode": "const b64 = $json.data[0].b64_json;\nconst body = JSON.stringify({ file_name: \"forge-design.png\", contents: b64 });\nreturn [{ json: { body } }];"
+        "jsCode": "const out = $json.output;\nconst imageUrl = Array.isArray(out) ? out[0] : out;\nconst body = JSON.stringify({ file_name: \"forge-design.png\", url: imageUrl });\nreturn [{ json: { body, imageUrl } }];"
       }
     },
     {
@@ -159,8 +162,8 @@
   "connections": {
     "Airtable Trigger": { "main": [ [ { "node": "Filter Concept OK", "type": "main", "index": 0 } ] ] },
     "Filter Concept OK": { "main": [ [ { "node": "Build Image Req", "type": "main", "index": 0 } ] ] },
-    "Build Image Req": { "main": [ [ { "node": "gpt-image-1", "type": "main", "index": 0 } ] ] },
-    "gpt-image-1": { "main": [ [ { "node": "Build Upload Req", "type": "main", "index": 0 } ] ] },
+    "Build Image Req": { "main": [ [ { "node": "Ideogram", "type": "main", "index": 0 } ] ] },
+    "Ideogram": { "main": [ [ { "node": "Build Upload Req", "type": "main", "index": 0 } ] ] },
     "Build Upload Req": { "main": [ [ { "node": "Printify Upload", "type": "main", "index": 0 } ] ] },
     "Printify Upload": { "main": [ [ { "node": "Build Product Req", "type": "main", "index": 0 } ] ] },
     "Build Product Req": { "main": [ [ { "node": "Printify Create Product", "type": "main", "index": 0 } ] ] },

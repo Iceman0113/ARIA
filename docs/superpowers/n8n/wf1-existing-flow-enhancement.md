@@ -10,10 +10,15 @@ You already have an n8n flow that drafts GitFunny listing copy
 In the **Claude** HTTP node's system prompt, add `image_prompt` to the JSON keys it must
 return. Append this to the instruction that lists the output fields:
 
-> Also include `image_prompt` (string): a vivid prompt for an image model to render the
-> design as **front-chest t-shirt art on a transparent background**. ORIGINAL artwork
-> only — describe the visual; never reference copyrighted characters, company/brand
-> logos (GitHub, Docker, Disney, sports teams, etc.), or celebrity likenesses.
+> Also include `image_prompt` (string): a vivid prompt for an image model (Ideogram) to
+> render the design as a **centered t-shirt graphic on a plain white background**, with
+> any text spelled out exactly and bold/legible. ORIGINAL artwork only — describe the
+> visual; never reference copyrighted characters, company/brand logos (GitHub, Docker,
+> Disney, sports teams, etc.), or celebrity likenesses.
+
+> Note: WF2 already appends "white background, vector sticker style, no mockup" to your
+> prompt, so you don't need to repeat styling — just describe the joke's visual + the
+> exact text.
 
 So Claude now returns the keys you already parse **plus** `image_prompt`.
 
