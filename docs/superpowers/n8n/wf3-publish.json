@@ -80,7 +80,7 @@
       "position": [980, 300],
       "parameters": {
         "method": "GET",
-        "url": "=https://api.printify.com/v1/shops/27681721/products/{{ $('Stash IDs').item.json.productId }}.json",
+        "url": "=https://api.printify.com/v1/shops/27681721/products/{{ $('Stash IDs').first().json.productId }}.json",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth"
       },
@@ -93,7 +93,7 @@
       "typeVersion": 2,
       "position": [1200, 300],
       "parameters": {
-        "jsCode": "const ext = $json.external || {};\nreturn [{ json: { recordId: $('Stash IDs').item.json.recordId, etsyId: ext.id || \"\", Status: ext.id ? \"live\" : \"Built\" } }];"
+        "jsCode": "const ext = $json.external || {};\nreturn [{ json: { recordId: $('Stash IDs').first().json.recordId, etsyId: ext.id || \"\", Status: ext.id ? \"live\" : \"Built\" } }];"
       }
     },
     {
