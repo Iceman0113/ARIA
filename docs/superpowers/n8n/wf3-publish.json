@@ -70,7 +70,7 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1,
       "position": [760, 300],
-      "parameters": { "amount": 15, "unit": "seconds" }
+      "parameters": { "amount": 60, "unit": "seconds" }
     },
     {
       "id": "wf3-get",
