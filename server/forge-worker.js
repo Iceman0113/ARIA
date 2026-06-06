@@ -15,7 +15,7 @@ import os from 'node:os';
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { makeAirtable } from './src/airtable.js';
 import {
-  inboxFilename, recordIdFromFilename, buildProductBody, mockupUrls,
+  inboxFilename, recordIdFromFilename, buildProductBody, mockupUrls, buildImagePromptMessages,
 } from './src/forge/worker-lib.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -53,6 +53,22 @@ async function generateDesign(prompt) {
   return Array.isArray(d.output) ? d.output[0] : d.output;
 }
 
+async function deriveImagePrompt(row) {
+  const { system, user } = buildImagePromptMessages(row);
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 300, system, messages: [{ role: 'user', content: user }] }),
+  });
+  const d = await res.json();
+  if (!d.content) throw new Error(`Anthropic: ${JSON.stringify(d)}`);
+  return d.content[0].text.trim();
+}
+
 async function download(url, dest) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`download ${res.status}`);
@@ -88,11 +104,17 @@ async function printifyCreate(uploadId, title, description) {
 // Concept OK + Drafted + Image Prompt  ->  generate design into inbox/, set Awaiting BG
 async function generatePhase() {
   const items = await at.listItems();
-  const todo = items.filter((r) => r['Concept OK'] === true && r.Status === 'Drafted' && r['Image Prompt']);
+  const todo = items.filter((r) => r['Concept OK'] === true && r.Status === 'Drafted');
   for (const row of todo) {
     try {
       log(`generate ${row.id} "${row.Name}"`);
-      const url = await generateDesign(String(row['Image Prompt']) + SUFFIX);
+      let imagePrompt = row['Image Prompt'];
+      if (!imagePrompt) {
+        imagePrompt = await deriveImagePrompt(row);
+        await at.updateItem(row.id, { 'Image Prompt': imagePrompt });
+        log(`  derived Image Prompt: ${imagePrompt.slice(0, 80)}...`);
+      }
+      const url = await generateDesign(String(imagePrompt) + SUFFIX);
       const fname = inboxFilename(row.id, row.Title || row.Name || 'design');
       await download(url, path.join(INBOX, fname));
       await at.updateItem(row.id, { Status: 'Awaiting BG' });
@@ -133,7 +155,7 @@ async function tick() { await generatePhase(); await buildPhase(); }
 
 async function main() {
   for (const d of [INBOX, READY, DONE]) await mkdir(d, { recursive: true });
-  const missing = ['REPLICATE_API_TOKEN', 'PRINTIFY_API_TOKEN', 'PRINTIFY_SHOP_ID', 'AIRTABLE_API_KEY', 'AIRTABLE_BASE_ID']
+  const missing = ['REPLICATE_API_TOKEN', 'PRINTIFY_API_TOKEN', 'PRINTIFY_SHOP_ID', 'AIRTABLE_API_KEY', 'AIRTABLE_BASE_ID', 'ANTHROPIC_API_KEY']
     .filter((k) => !process.env[k]);
   if (missing.length) { console.error('Missing env:', missing.join(', ')); process.exit(1); }
 

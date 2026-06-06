@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   slugify, inboxFilename, recordIdFromFilename, buildProductBody, mockupUrls,
+  buildImagePromptMessages,
 } from '../src/forge/worker-lib.js';
 
 describe('slugify', () => {
@@ -50,5 +51,20 @@ describe('mockupUrls', () => {
   it('maps product images to Airtable attachment objects', () => {
     expect(mockupUrls({ images: [{ src: 'a' }, { src: 'b' }] })).toEqual([{ url: 'a' }, { url: 'b' }]);
     expect(mockupUrls({})).toEqual([]);
+  });
+});
+
+describe('buildImagePromptMessages', () => {
+  it('builds system + user with the idea and niche, and an IP guardrail', () => {
+    const { system, user } = buildImagePromptMessages({ Name: 'Works On My Machine', Niche: 'IT humor' });
+    expect(system).toMatch(/GitFunny/);
+    expect(system.toLowerCase()).toMatch(/never|original/);
+    expect(user).toContain('Works On My Machine');
+    expect(user).toContain('IT humor');
+  });
+  it('falls back to Title when Name is missing and defaults niche', () => {
+    const { user } = buildImagePromptMessages({ Title: 'Funny Cat Tee' });
+    expect(user).toContain('Funny Cat Tee');
+    expect(user.toLowerCase()).toContain('funny');
   });
 });

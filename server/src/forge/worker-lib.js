@@ -44,3 +44,15 @@ export function buildProductBody({
 export function mockupUrls(product) {
   return ((product && product.images) || []).map((i) => ({ url: i.src }));
 }
+
+export function buildImagePromptMessages(row) {
+  const idea = row.Name || row.Title || '';
+  const niche = row.Niche || 'funny';
+  const system = "You are Forge, a print-on-demand t-shirt designer for GitFunny (original funny / developer-humor tees). "
+    + "Given a product idea, reply with ONLY a single vivid image-generation prompt for the front-chest design: "
+    + "state the exact text to display (in quotes) plus a simple complementary graphic or icon. One sentence, no preamble. "
+    + "ORIGINAL artwork only — never reference copyrighted characters, brand or company logos, or celebrity likenesses. "
+    + "Do NOT mention background color or 'mockup' — that styling is added later.";
+  const user = `Idea: ${idea}\nNiche: ${niche}`;
+  return { system, user };
+}
