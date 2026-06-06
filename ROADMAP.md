@@ -12,6 +12,7 @@ This replaces the scattered phase notes in `CONTEXT.md` and `docs/superpowers/*`
 - **Phase: UI revamp** — on `feat/aria-ui-revamp-and-factory`.
 - **Phase: Agent Factory** — research → spec/prompt → human approval → hot-register `dispatch_to_<slug>` tools from Postgres, zero restarts. Shadow→active→archived lifecycle, 3 containment layers. Server 77/77, client 48/48. PR #1 merged. **Echo** spawned as first live agent. See [PHASE-COMPLETE-agent-factory.md](docs/superpowers/PHASE-COMPLETE-agent-factory.md).
 - **Phase A — Promote to `main`** ✅ 2026-06-04 — revamp+factory line is now the default branch (`d9f6789`). During cutover, discovered a stray PWA commit (`79d8a99`, May 25) that had been sitting on `origin/main` and was never picked up by the revamp line; merged it in (resolved `package.json`, regenerated lockfile, verified `vite build` emits `sw.js`). `main` and `feat/aria-ui-revamp-and-factory` are now in sync. `feat/aria-agent-factory` is stale (left at `9004b63`) — safe to delete.
+- **Forge — Etsy POD pipeline (MVP + Slice 2)** ✅ 2026-06-06 — GitFunny store: idea → AI design (Ideogram) → Printify product → **live Etsy listing**, with two human gates (`Concept OK`, `Publish`). Hybrid stack: Airtable (`Products` table) = record + gates, n8n WF1/WF3 (concept/publish) + a **local worker** (`server/forge-worker.js`, run via `bin/forge-worker.sh`) that handles design-gen + human-in-the-loop background removal via `~/Desktop/Forge/{inbox,ready,done}` (replaces n8n WF2). Slice 2: worker auto-derives the `Image Prompt` via Claude. First live listing: etsy.com/listing/4516889318. Server 91/91. Spec/plan in `docs/superpowers/specs|plans/2026-06-04-forge-*`. **⛔ Operational gate:** add Replicate credit (~$5 ≈ 150 designs) — free allowance is spent, so no new designs generate until billing is added.
 
 ---
 
@@ -32,6 +33,9 @@ Echo reasons well but has **no actual PDF tools**. Wire the PDF-ingest/extractio
 
 ### Phase C — "Phase 3" integrations
 GitHub, Linear, PostHog, Intercom — stubbed/disabled in code (`CONTEXT.md:325`). Enable when there's a use case.
+
+### Forge — future slices (Slice 3+)
+Not needed to operate/earn. Conversational "chat with Forge" intake · multiple product types/blueprints · regenerate-from-reject-reason · Scout suggesting trending niches · transparent-bg remover (needs Replicate billing) · sales/revenue sync into Airtable + HUD · live WF3 wait already bumped to 60s in repo (apply in n8n).
 
 ### Phase D — Hermes sub-agent
 `delegate_to_hermes` spawn-per-call sub-agent for persistent memory / scheduled work. Full plan in `CONTEXT.md:512`.
