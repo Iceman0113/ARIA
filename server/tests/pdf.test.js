@@ -45,3 +45,46 @@ describe('buildPdfMessages', () => {
     }]);
   });
 });
+
+import { readPdf } from '../src/pdf.js';
+
+const PDF = Buffer.from('%PDF-1.4 fake body');
+const fakeClient = { messages: { create: async () => ({ content: [{ type: 'text', text: 'INVOICE total $42' }] }) } };
+
+describe('readPdf', () => {
+  it('reads a local path and returns wrapped content', async () => {
+    const out = await readPdf({ source: '/tmp/x.pdf', instruction: 'totals' }, {
+      readFileImpl: async (p) => { expect(p).toBe('/tmp/x.pdf'); return PDF; },
+      client: fakeClient,
+    });
+    expect(out.source).toBe('/tmp/x.pdf');
+    expect(out.content).toBe('<untrusted-source>\nINVOICE total $42\n</untrusted-source>');
+  });
+
+  it('reads a url via fetch', async () => {
+    const out = await readPdf({ source: 'https://x.com/a.pdf' }, {
+      fetchImpl: async () => ({ ok: true, arrayBuffer: async () => PDF }),
+      client: fakeClient,
+    });
+    expect(out.content).toContain('INVOICE');
+  });
+
+  it('errors (no throw) on missing source', async () => {
+    expect((await readPdf({}, {})).error).toMatch(/source is required/);
+  });
+
+  it('errors on non-PDF bytes', async () => {
+    const out = await readPdf({ source: '/tmp/x.txt' }, { readFileImpl: async () => Buffer.from('hello'), client: fakeClient });
+    expect(out.error).toMatch(/not a PDF/);
+  });
+
+  it('errors on a failed url fetch', async () => {
+    const out = await readPdf({ source: 'https://x.com/a.pdf' }, { fetchImpl: async () => ({ ok: false, status: 404 }) });
+    expect(out.error).toMatch(/fetch failed \(404\)/);
+  });
+
+  it('errors when the file cannot be read', async () => {
+    const out = await readPdf({ source: '/tmp/missing.pdf' }, { readFileImpl: async () => { throw new Error('ENOENT'); } });
+    expect(out.error).toMatch(/could not load/);
+  });
+});
