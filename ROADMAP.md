@@ -12,15 +12,15 @@ This replaces the scattered phase notes in `CONTEXT.md` and `docs/superpowers/*`
 - **Phase: UI revamp** — on `feat/aria-ui-revamp-and-factory`.
 - **Phase: Agent Factory** — research → spec/prompt → human approval → hot-register `dispatch_to_<slug>` tools from Postgres, zero restarts. Shadow→active→archived lifecycle, 3 containment layers. Server 77/77, client 48/48. PR #1 merged. **Echo** spawned as first live agent. See [PHASE-COMPLETE-agent-factory.md](docs/superpowers/PHASE-COMPLETE-agent-factory.md).
 - **Phase A — Promote to `main`** ✅ 2026-06-04 — revamp+factory line is now the default branch (`d9f6789`). During cutover, discovered a stray PWA commit (`79d8a99`, May 25) that had been sitting on `origin/main` and was never picked up by the revamp line; merged it in (resolved `package.json`, regenerated lockfile, verified `vite build` emits `sw.js`). `main` and `feat/aria-ui-revamp-and-factory` are now in sync. `feat/aria-agent-factory` is stale (left at `9004b63`) — safe to delete.
+- **Phase B Slice 1 — Echo PDF tools** ✅ 2026-06-06 — `read_pdf` tool (`server/src/pdf.js`): reads a PDF by local path or http(s) URL, Claude-native document extraction (text/tables/scanned), `<untrusted-source>`-wrapped for injection safety. Registered `factory_allowed: true` in `tools.js` + added to Echo's Supabase `tool_allowlist` (hot-reloads). Server 102/102; live-verified by path + URL. Merged to `main` @ `8406aae`. Slice 2 (autonomous monitoring) is in Next.
 - **Forge — Etsy POD pipeline (MVP + Slice 2)** ✅ 2026-06-06 — GitFunny store: idea → AI design (Ideogram) → Printify product → **live Etsy listing**, with two human gates (`Concept OK`, `Publish`). Hybrid stack: Airtable (`Products` table) = record + gates, n8n WF1/WF3 (concept/publish) + a **local worker** (`server/forge-worker.js`, run via `bin/forge-worker.sh`) that handles design-gen + human-in-the-loop background removal via `~/Desktop/Forge/{inbox,ready,done}` (replaces n8n WF2). Slice 2: worker auto-derives the `Image Prompt` via Claude. First live listing: etsy.com/listing/4516889318. Server 91/91. Spec/plan in `docs/superpowers/specs|plans/2026-06-04-forge-*`. **⛔ Operational gate:** add Replicate credit (~$5 ≈ 150 designs) — free allowance is spent, so no new designs generate until billing is added.
 
 ---
 
 ## 🔜 Next (no committed order — pick when starting a session)
 
-### Phase B — Build out Echo for real
-Echo reasons well but has **no actual PDF tools**. Wire the PDF-ingest/extraction tools from Echo's `tools_wishlist`.
-- **Done when:** Echo can ingest a real PDF and extract structured content end-to-end.
+### Phase B Slice 2 — Echo autonomous PDF monitoring
+Slice 1 (the `read_pdf` tool) shipped — see Done. Slice 2 is Echo's full "persistent monitor" vision: `list_pdfs(folder)`, a hash **ledger** (new-vs-revised detection), folder-watching + a scheduler for autonomous runs, and alerting via Echo's existing tools. Spec/plan: `docs/superpowers/specs|plans/2026-06-06-echo-pdf-tools-*`.
 
 ---
 
