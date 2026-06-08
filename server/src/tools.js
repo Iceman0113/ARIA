@@ -16,6 +16,7 @@ import { delegateToFactory } from './factory/delegate.js';
 import { factoryRegistry } from './factory/tool-registry.js';
 import { makeAirtable } from './airtable.js';
 import { summarizeMerch } from './forge-report.js';
+import { readPdf } from './pdf.js';
 
 // ── Tool definitions for Claude ───────────────────────────────────
 
@@ -318,6 +319,19 @@ export const TOOL_DEFINITIONS = [
     },
     factory_allowed: false,
   },
+  {
+    name: 'read_pdf',
+    description: "Read a PDF from a local file path or an http(s) URL and extract or answer based on an instruction. Handles text, tables, and scanned documents — use for invoices, contracts, proposals, and other business PDFs.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        source: { type: 'string', description: 'Local file path (e.g. ~/Desktop/invoice.pdf) or an http(s) URL to the PDF.' },
+        instruction: { type: 'string', description: 'What to extract or answer, e.g. "list all line items and the total". Optional.' },
+      },
+      required: ['source'],
+    },
+    factory_allowed: true,
+  },
 ];
 
 /**
@@ -376,6 +390,7 @@ export async function callTool(name, input, onEvent, broadcast = () => {}, ctx) 
     case 'publish_to_linkedin':    return publishLinkedInPost(input);
     case 'get_linkedin_targets':   return getLinkedInTargets();
     case 'web_search':             return webSearch(input.query);
+    case 'read_pdf':              return readPdf(input);
     case 'get_merch_status': {
       const at = makeAirtable();
       const items = await at.listItems();
