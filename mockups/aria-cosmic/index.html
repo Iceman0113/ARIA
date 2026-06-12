@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ARIA — Cosmic Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0E0F13; --teal:#2DD4A8; --lime:#C5FF4D;
+    --ink:#eaf2ee; --dim:#8a99a0;
+    --surface:rgba(14,15,19,.5); --hair:rgba(255,255,255,.07);
+    --scout:#6BD08F; --hunter:#E08B5C; --creative:#B97FE5; --hermes:#E3CC68; --beacon:#6FA8DC; --verse:#C078E5;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);overflow:hidden;
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink)}
+  #space{position:fixed;inset:0;z-index:1;display:block;
+    background:radial-gradient(120% 120% at 50% 38%, #0e1015 0%, #08090d 55%, #040506 100%)}
+  .glass{background:var(--surface);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--hair)}
+
+  /* ── HEADER (56px) ── */
+  header{position:fixed;top:0;left:0;right:0;height:56px;z-index:30;display:flex;align-items:center;
+    justify-content:space-between;padding:0 18px;
+    background:linear-gradient(180deg,rgba(8,9,12,.82),rgba(8,9,12,0))}
+  .wordmark{display:flex;align-items:center;gap:9px;font-weight:800;letter-spacing:.18em;font-size:14px}
+  .wordmark .d{width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 12px var(--teal)}
+  .hgroup{display:flex;align-items:center;gap:8px}
+  .ghost{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;cursor:pointer;
+    color:#b9c6c0;background:transparent;border:1px solid transparent;position:relative;transition:.15s}
+  .ghost:hover{background:rgba(255,255,255,.05);border-color:var(--hair);color:#fff}
+  .ghost .badge{position:absolute;top:5px;right:5px;min-width:14px;height:14px;border-radius:8px;
+    background:var(--lime);color:#10210a;font-size:9px;font-weight:800;display:grid;place-items:center;padding:0 3px}
+  .statwrap{display:flex;align-items:center;gap:8px;margin-left:6px;padding-left:12px;border-left:1px solid var(--hair)}
+  .statdot{width:10px;height:10px;border-radius:50%;background:#5b6b66;transition:.3s}
+  .statdot.listening{background:var(--teal);box-shadow:0 0 12px var(--teal);animation:sd 1.4s infinite}
+  .statdot.processing{background:#8f7be6;box-shadow:0 0 12px #8f7be6}
+  @keyframes sd{0%,100%{opacity:1}50%{opacity:.3}}
+  .stattxt{font-size:10px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;width:74px}
+
+  /* ── LEFT TASK EDITOR ── */
+  .editor{position:fixed;top:64px;bottom:96px;left:14px;width:296px;z-index:25;border-radius:18px;
+    display:flex;flex-direction:column;overflow:hidden;transition:transform .34s cubic-bezier(.16,1,.3,1),opacity .3s}
+  .editor.collapsed{transform:translateX(-330px);opacity:0;pointer-events:none}
+  .editor h3{margin:0;padding:15px 16px 4px;font-size:10px;letter-spacing:.24em;color:var(--teal)}
+  .editor .sub{padding:0 16px 10px;font-size:11px;color:var(--dim)}
+  .elist{flex:1;overflow:auto;padding:4px 10px 14px}
+  .elist::-webkit-scrollbar{width:6px}.elist::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
+  .ablock{margin-bottom:11px}
+  .ablock .ah{display:flex;align-items:center;gap:9px;padding:5px 5px}
+  .ablock .ah .chip{width:30px;height:30px;border-radius:50%;overflow:hidden;position:relative;flex:0 0 30px;border:1.5px solid var(--ac)}
+  .ablock .ah .chip svg{position:absolute;inset:0;width:100%;height:100%}
+  .ablock .ah .nm{font-size:11px;font-weight:700;letter-spacing:.12em}
+  .ablock .ah .st{margin-left:auto;font-size:8.5px;letter-spacing:.16em;color:var(--dim);border:1px solid var(--hair);border-radius:20px;padding:2px 8px}
+  .ablock .ah .st.on{color:var(--lime);border-color:rgba(197,255,77,.4)}
+  .task{display:flex;align-items:center;gap:8px;margin:6px 0 0 38px;padding:7px 9px;border-radius:9px;
+    background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.05);font-size:11px}
+  .task .grip{color:#3c4b46;cursor:grab}.task .txt{flex:1;color:#d3e2db}.task .x{color:#566661;cursor:pointer}
+  .task .x:hover{color:#ff8a7a}
+  .addrow{display:flex;gap:6px;margin:7px 0 0 38px}
+  .addrow input{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--hair);border-radius:9px;
+    color:var(--ink);font-size:11px;padding:6px 9px;outline:none;font-family:inherit}
+  .addrow input:focus{border-color:var(--teal)}
+  .addrow button{background:rgba(45,212,168,.16);border:1px solid rgba(45,212,168,.4);color:var(--teal);
+    border-radius:9px;font-size:14px;width:30px;cursor:pointer}
+
+  /* tab handle */
+  .ecol{position:absolute;top:14px;right:12px;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;
+    cursor:pointer;color:var(--dim);border:1px solid var(--hair);background:rgba(255,255,255,.04);z-index:2;font-size:15px}
+  .ecol:hover{color:var(--teal);border-color:rgba(45,212,168,.4)}
+  .ehandle{position:fixed;top:50%;left:14px;transform:translateY(-50%);z-index:26;width:30px;height:64px;
+    border-radius:0 14px 14px 0;display:none;place-items:center;cursor:pointer;color:var(--teal);font-size:15px}
+
+  /* ── RIGHT ACTIVITY PANEL ── */
+  .activity{position:fixed;top:64px;bottom:96px;right:14px;width:260px;z-index:25;border-radius:18px;
+    display:flex;flex-direction:column;overflow:hidden;transition:width .3s cubic-bezier(.16,1,.3,1)}
+  .activity .atop{display:flex;align-items:center;justify-content:space-between;padding:13px 14px 8px}
+  .activity .atop .ttl{font-size:10px;letter-spacing:.24em;color:var(--dim)}
+  .activity .atop .col{cursor:pointer;color:var(--dim)}
+  .ptabs{display:flex;gap:14px}
+  .ptab{background:none;border:none;cursor:pointer;font-family:inherit;font-size:10px;letter-spacing:.18em;
+    color:var(--dim);padding:3px 0;position:relative;display:flex;align-items:center;gap:6px}
+  .ptab.active{color:var(--ink)}
+  .ptab.active::after{content:"";position:absolute;left:0;right:0;bottom:-7px;height:2px;border-radius:2px;background:var(--teal)}
+  .tbadge{background:#ff3b54;color:#fff;font-size:8.5px;font-weight:800;min-width:15px;height:15px;border-radius:8px;
+    display:grid;place-items:center;padding:0 4px;letter-spacing:0}
+  .tbadge.zero{display:none}
+  .approvals{flex:1;overflow:auto;padding:8px 12px 14px}
+  .approvals::-webkit-scrollbar{width:6px}.approvals::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
+  .apv{border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
+    border-left:2px solid var(--ac,var(--teal));padding:10px 11px;margin-bottom:9px;
+    animation:slidein .3s cubic-bezier(.16,1,.3,1) both}
+  .apv .ah{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .apv .ah .chip{width:22px;height:22px;border-radius:50%;overflow:hidden;position:relative;flex:0 0 22px;border:1.5px solid var(--ac)}
+  .apv .ah .chip svg, .apv .ah .chip img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .apv .ah .who{font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+  .apv .ah .when{margin-left:auto;font-size:9px;color:#5f7269}
+  .apv .ttl2{font-size:11.5px;font-weight:600;color:#eaf2ee;margin-bottom:3px}
+  .apv .prev{font-size:10.5px;color:#9fb1aa;line-height:1.4;margin-bottom:9px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .apv .acts{display:flex;gap:6px}
+  .apv .acts button{font-family:inherit;font-size:10px;font-weight:600;letter-spacing:.04em;border-radius:8px;
+    padding:6px 0;cursor:pointer;border:1px solid transparent}
+  .apv .approve{flex:1;background:rgba(45,212,168,.16);border-color:rgba(45,212,168,.45);color:var(--teal)}
+  .apv .approve:hover{background:rgba(45,212,168,.3)}
+  .apv .edit{flex:0 0 52px;background:rgba(255,255,255,.05);border-color:var(--hair);color:#cfe0d9}
+  .apv .reject{flex:0 0 58px;background:rgba(255,80,90,.12);border-color:rgba(255,80,90,.4);color:#ff8a93}
+  .apv .reject:hover{background:rgba(255,80,90,.24)}
+  .apv-empty{text-align:center;color:#5f7269;font-size:11px;padding:34px 12px;line-height:1.5}
+  .asections{flex:1;overflow:auto;padding:2px 12px 14px}
+  .asections::-webkit-scrollbar{width:6px}.asections::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
+  .asec{margin-bottom:14px}
+  .asec .sh{display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.16em;color:var(--dim);
+    text-transform:uppercase;margin-bottom:7px}
+  .asec .sh .ct{margin-left:auto;background:rgba(255,255,255,.06);border-radius:10px;padding:1px 7px;font-size:9px;color:#cfe0d9}
+  .acard{padding:9px 11px;border-radius:11px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.05);
+    margin-bottom:7px;font-size:11px;border-left:2px solid var(--ac,var(--teal));
+    animation:slidein .3s cubic-bezier(.16,1,.3,1) both}
+  @keyframes slidein{from{transform:translateX(26px);opacity:0}to{transform:translateX(0);opacity:1}}
+  .acard .t1{color:#e7f1ec;font-weight:600;margin-bottom:2px}
+  .acard .t2{color:var(--dim);font-size:10px}
+  .activity.collapsed{width:38px}
+  .activity.collapsed .ptabs, .activity.collapsed .asections, .activity.collapsed .approvals{display:none!important}
+  .activity.collapsed .atop{justify-content:center;padding:13px 0}
+  /* panels recede while ARIA is listening/speaking so focus snaps to the orb */
+  .editor,.activity{transition:opacity .45s ease, filter .45s ease, transform .34s cubic-bezier(.16,1,.3,1), width .3s cubic-bezier(.16,1,.3,1)}
+  body.aria-busy .editor, body.aria-busy .activity{opacity:.38;filter:saturate(.85)}
+  body.aria-busy .editor:hover, body.aria-busy .activity:hover{opacity:1;filter:none}
+
+  /* ── TOP-CENTER DOCK ── */
+  .dock{position:fixed;top:64px;left:0;right:0;z-index:24;display:flex;flex-wrap:wrap;justify-content:center;
+    gap:9px;align-items:flex-start;pointer-events:none;
+    transition:left .34s cubic-bezier(.16,1,.3,1),right .3s cubic-bezier(.16,1,.3,1)}
+  body.editor-open .dock{left:322px}
+  body.activity-open .dock{right:286px}
+  .dlabel{position:absolute;top:-2px;left:50%;transform:translate(-50%,-100%);font-size:9px;letter-spacing:.22em;
+    color:var(--dim);display:flex;align-items:center;gap:6px;white-space:nowrap;opacity:0;transition:.3s}
+  .dock.has .dlabel{opacity:1}
+  .dlabel .p{width:5px;height:5px;border-radius:50%;background:var(--lime);box-shadow:0 0 8px var(--lime);animation:sd 1.6s infinite}
+  .dcard{display:flex;align-items:center;gap:9px;padding:7px 12px 7px 7px;border-radius:30px;pointer-events:auto;
+    background:rgba(15,17,23,.76);backdrop-filter:blur(16px);
+    border:1px solid color-mix(in srgb,var(--ac) 38%, rgba(255,255,255,.08));
+    box-shadow:0 8px 26px rgba(0,0,0,.45), 0 0 16px -7px var(--ac);
+    animation:dockin .4s cubic-bezier(.16,1,.3,1) both}
+  @keyframes dockin{from{transform:translateY(-22px) scale(.7);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
+  .dcard .m{width:34px;height:34px;border-radius:50%;overflow:hidden;position:relative;border:1.5px solid var(--ac)}
+  .dcard .m svg{position:absolute;inset:0;width:100%;height:100%}
+  .dcard .info{min-width:0}
+  .dcard .info .nn{font-size:11px;font-weight:700;line-height:1.1}
+  .dcard .info .tk{font-size:9.5px;color:#b7c6bf;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .dcard .info .pp{height:2.5px;width:120px;border-radius:3px;margin-top:5px;background:rgba(255,255,255,.12);overflow:hidden}
+  .dcard .info .pp i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--lime),#9be84d)}
+
+  /* ── ROAMING AGENTS ── */
+  #roamers{position:fixed;inset:0;z-index:12;pointer-events:none}
+  .roamer{position:absolute;width:78px;text-align:center;pointer-events:auto;cursor:pointer;
+    transition:opacity .5s, transform .5s ease}
+  .roamer .av{width:74px;height:74px;border-radius:50%;overflow:hidden;position:relative;margin:0 auto;
+    border:1.5px solid var(--ac);box-shadow:0 12px 30px rgba(0,0,0,.5),0 0 26px -8px var(--ac)}
+  .roamer .av svg{position:absolute;inset:0;width:100%;height:100%}
+  .roamer .av .wash{position:absolute;inset:0;background:radial-gradient(120% 95% at 50% 6%, color-mix(in srgb,var(--ac) 50%, #0b1016), #0b1016 72%)}
+  /* generated portrait overlays the SVG placeholder; SVG shows if the PNG is missing */
+  .portrait{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:2;border-radius:inherit}
+  .roamer .nm{margin-top:6px;font-size:8.5px;letter-spacing:.2em;color:var(--dim)}
+  .roamer.hidden{opacity:0;transform:scale(.4) translateY(-40px)}
+
+  /* ── FLOATING RESPONSE CARD ── */
+  .rcard{position:fixed;z-index:14;width:240px;border-radius:14px;overflow:hidden;
+    background:rgba(22,23,29,.75);backdrop-filter:blur(16px);border:1px solid var(--hair);
+    box-shadow:0 20px 50px rgba(0,0,0,.55);animation:floaty 4s ease-in-out infinite}
+  .rcard.rev{width:300px}
+  .rcard .bar{height:2px;background:var(--teal)}
+  .rcard .bd{padding:12px 14px}
+  .rcard .lbl{font-size:9px;letter-spacing:.2em;color:var(--teal);text-transform:uppercase;margin-bottom:6px}
+  .rcard .big{font-size:24px;font-weight:800;letter-spacing:-.01em}
+  .rcard .sm{font-size:11px;color:var(--dim);margin-top:3px}
+  @keyframes floaty{0%,100%{transform:translateY(-6px)}50%{transform:translateY(6px)}}
+
+  /* ── MIC BAR ── */
+  .micbar{position:fixed;left:0;right:0;bottom:24px;z-index:28;display:flex;flex-direction:column;
+    align-items:center;gap:9px;pointer-events:none}
+  .micbtn{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+    pointer-events:auto;background:#16171D;border:1px solid rgba(255,255,255,.08);position:relative;transition:.25s}
+  .micbtn svg{width:26px;height:26px;color:#fff}
+  .micbtn.listening{border-color:var(--teal);box-shadow:0 0 24px rgba(45,212,168,.5)}
+  .micbtn.listening::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--teal);
+    animation:pulsering 1.4s cubic-bezier(.16,1,.3,1) infinite}
+  @keyframes pulsering{0%{transform:scale(1);opacity:1}100%{transform:scale(1.32);opacity:0}}
+  .michint{font-size:11px;letter-spacing:.08em;color:rgba(255,255,255,.4);text-transform:uppercase}
+</style>
+</head>
+<body>
+<canvas id="space"></canvas>
+
+<header>
+  <div class="wordmark"><span class="d"></span>ARIA</div>
+  <div class="hgroup">
+    <div class="ghost" title="Neural map">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="7" r="2"/><circle cx="6" cy="18" r="2"/><path d="M7 7l3 3M17 8l-3 3M8 17l2-3"/></svg>
+    </div>
+    <div class="ghost" title="Alerts"><span class="badge">3</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+    </div>
+    <div class="ghost" title="Settings">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.3-1.3L13.8 2h-3.6l-.4 2.5a7 7 0 0 0-2.3 1.3l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12a7 7 0 0 0 .1 1.3l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.3 1.3l.4 2.5h3.6l.4-2.5a7 7 0 0 0 2.3-1.3l2.3 1 2-3.4-2-1.5A7 7 0 0 0 19 12z"/></svg>
+    </div>
+    <div class="statwrap"><span class="statdot" id="statdot"></span><span class="stattxt" id="stattxt">Idle</span></div>
+  </div>
+</header>
+
+<!-- LEFT TASK EDITOR -->
+<div class="editor glass" id="editor">
+  <span class="ecol" id="ecol" title="Collapse panel">‹</span>
+  <h3>AGENT TASKING</h3>
+  <div class="sub">Edit, queue &amp; reorder what each agent works on.</div>
+  <div class="elist" id="elist"></div>
+</div>
+<div class="ehandle glass" id="ehandle" title="Open Agent Tasking">›</div>
+
+<!-- TOP-CENTER DOCK -->
+<div class="dock" id="dock"><div class="dlabel"><span class="p"></span>ACTIVE</div></div>
+
+<!-- RIGHT ACTIVITY PANEL -->
+<div class="activity glass" id="activity">
+  <div class="atop">
+    <div class="ptabs">
+      <button class="ptab active" data-tab="activity" onclick="switchPanel('activity')">ACTIVITY</button>
+      <button class="ptab" data-tab="approvals" onclick="switchPanel('approvals')">APPROVALS<span class="tbadge" id="apvBadge">0</span></button>
+    </div>
+    <span class="col" id="acol" title="Collapse">›</span>
+  </div>
+  <div class="asections" id="asections"></div>
+  <div class="approvals" id="approvals" style="display:none"></div>
+</div>
+
+<!-- ROAMERS + RESPONSE CARDS -->
+<div id="roamers"></div>
+<div id="cards"></div>
+
+<!-- MIC BAR -->
+<div class="micbar">
+  <div class="micbtn" id="micbtn">
+    <svg id="micicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+  </div>
+  <div class="michint" id="michint">Tap or say “Hey ARIA”</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script>
+/* ============================================================
+   AGENT MODEL
+============================================================ */
+const AGENTS = {
+  scout:   {ac:'#6BD08F', name:'Scout',    role:'WEB RECON'},
+  hunter:  {ac:'#E08B5C', name:'Hunter',   role:'LEAD GEN'},
+  creative:{ac:'#B97FE5', name:'Creative', role:'COPYWRITER'},
+  hermes:  {ac:'#E3CC68', name:'Hermes',   role:'LONG TASKS'},
+  beacon:  {ac:'#6FA8DC', name:'Beacon',   role:'BRIEFINGS'},
+  verse:   {ac:'#C078E5', name:'Verse',    role:'SOCIAL'},
+};
+const QUEUE = {
+  scout:['Watch Wayfinder pricing page','Scan Indy MSP market'],
+  hunter:['Qualify Bridgepoint Dental','Follow up Pixel Pools (overdue)'],
+  creative:['Draft LinkedIn post v2'],
+  hermes:['Nightly memory consolidation'],
+  beacon:['Draft 8 AM Morning Brief','Performance Clinic prep'],
+  verse:['Reply to Mark T. comment'],
+};
+const TASKLABEL = {
+  scout:'Scanning Wayfinder pricing…', hunter:'Qualifying Bridgepoint Dental…',
+  creative:'Drafting LinkedIn post v2…', hermes:'Consolidating memory…',
+  beacon:'Drafting 8 AM Morning Brief…', verse:'Drafting reply to Mark T…',
+};
+
+/* ============================================================
+   ROBOT AVATAR (SVG placeholder for generated portrait)
+============================================================ */
+function robot(id, ac){
+  return `<span class="wash"></span><svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="m${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef3f6"/><stop offset=".5" stop-color="#aebac1"/><stop offset="1" stop-color="#5d6b73"/></linearGradient>
+      <linearGradient id="d${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8d9aa1"/><stop offset="1" stop-color="#39454b"/></linearGradient>
+      <radialGradient id="v${id}" cx="50%" cy="40%" r="65%"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="${ac}"/><stop offset="1" stop-color="${ac}"/></radialGradient>
+      <radialGradient id="g${id}" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="${ac}" stop-opacity=".5"/><stop offset="1" stop-color="${ac}" stop-opacity="0"/></radialGradient>
+    </defs>
+    <ellipse cx="60" cy="58" rx="40" ry="42" fill="url(#g${id})"/>
+    <path d="M22 120 L27 94 Q60 80 93 94 L98 120 Z" fill="url(#d${id})"/>
+    <rect x="51" y="82" width="18" height="13" rx="4" fill="url(#d${id})"/>
+    <circle cx="60" cy="101" r="7" fill="#0b1115"/><circle cx="60" cy="101" r="4" fill="${ac}"/>
+    <rect x="53" y="72" width="14" height="13" rx="4" fill="url(#d${id})"/>
+    <path d="M35 45 Q35 21 60 21 Q85 21 85 45 L85 60 Q85 77 60 79 Q35 77 35 60 Z" fill="url(#m${id})"/>
+    <path d="M35 45 Q35 21 60 21 Q85 21 85 38 L35 44 Z" fill="#fff" opacity=".22"/>
+    <rect x="29" y="47" width="8" height="15" rx="3" fill="url(#d${id})"/><rect x="83" y="47" width="8" height="15" rx="3" fill="url(#d${id})"/>
+    <rect x="41" y="47" width="38" height="17" rx="8.5" fill="#0a1014"/>
+    <rect x="44" y="50" width="32" height="11" rx="5.5" fill="url(#v${id})"/>
+    <circle cx="53" cy="55.5" r="2.8" fill="#fff"/><circle cx="67" cy="55.5" r="2.8" fill="#fff"/>
+    <rect x="58.5" y="9" width="3" height="13" rx="1.5" fill="#6b7980"/><circle cx="60" cy="8" r="3.4" fill="${ac}"/>
+  </svg>`;
+}
+// Renders the generated portrait if avatars/<slug>.png exists; otherwise the SVG placeholder.
+function avHTML(k){
+  return `<span class="fallback" style="position:absolute;inset:0">${robot(k, AGENTS[k].ac)}</span>`
+       + `<img class="portrait" src="avatars/${k}.png" alt="${AGENTS[k].name}" onerror="this.remove()">`;
+}
+
+/* ============================================================
+   LEFT EDITOR + RIGHT ACTIVITY render
+============================================================ */
+const state = {}; // slug -> 'idle' | 'working'
+Object.keys(AGENTS).forEach(k=>state[k]='idle');
+
+function renderEditor(){
+  document.getElementById('elist').innerHTML = Object.keys(AGENTS).map(k=>`
+    <div class="ablock" style="--ac:${AGENTS[k].ac}" data-k="${k}">
+      <div class="ah"><span class="chip">${avHTML(k)}</span>
+        <span class="nm" style="color:${AGENTS[k].ac}">${AGENTS[k].name.toUpperCase()}</span>
+        <span class="st ${state[k]==='working'?'on':''}">${state[k]==='working'?'WORKING':'IDLE'}</span></div>
+      ${QUEUE[k].map((t,i)=>`<div class="task"><span class="grip">⠿</span><span class="txt">${t}</span><span class="x" onclick="delTask('${k}',${i})">✕</span></div>`).join('')}
+      <div class="addrow"><input placeholder="Add task for ${AGENTS[k].name}…" onkeydown="if(event.key==='Enter')addTask('${k}',this)"><button onclick="addTask('${k}',this.previousElementSibling)">+</button></div>
+    </div>`).join('');
+}
+function addTask(k,inp){ const v=inp.value.trim(); if(!v)return; QUEUE[k].push(v); inp.value=''; renderEditor(); }
+function delTask(k,i){ QUEUE[k].splice(i,1); renderEditor(); }
+
+const ACTIVITY = {
+  'Inbox Replies':[['Sarah K. — Hedgerow Dental','Re: proposal · 6m', 'verse']],
+  'Scout Tasks':[['Wayfinder dropped Starter → $399','Price-war signal · 2m','scout']],
+  'Hunter Tasks':[['Bridgepoint hired ops director','Procurement window open · 14m','hunter']],
+  'Creative Drafts':[['LinkedIn post v2 ready','Story angle · 8m','creative']],
+};
+function renderActivity(){
+  document.getElementById('asections').innerHTML = Object.entries(ACTIVITY).map(([sec,items])=>`
+    <div class="asec"><div class="sh">${sec}<span class="ct">${items.length}</span></div>
+      ${items.map(([t1,t2,ag])=>`<div class="acard" style="--ac:${AGENTS[ag]?.ac||'var(--teal)'}"><div class="t1">${t1}</div><div class="t2">${t2}</div></div>`).join('')}
+    </div>`).join('');
+}
+
+// ── APPROVALS queue (human-in-the-loop sign-off) ──
+let APPROVALS = [
+  {id:1, agent:'verse',    title:'LinkedIn reply to “Mark T.”',        when:'4m',      preview:'“Appreciate the thoughtful take, Mark — agree most Indy SMBs underestimate downtime cost. Happy to share our 2-minute audit…”'},
+  {id:2, agent:'creative', title:'Cold email — Bridgepoint Dental',     when:'12m',     preview:'“Hi Dana, congrats on the new ops role. Multi-location practices we work with cut IT tickets ~40% in 90 days…”'},
+  {id:3, agent:'hunter',   title:'Proposal follow-up — Pixel Pools',    when:'overdue', preview:'“Just circling back on the proposal from May 29 — any questions I can answer to help you decide?”'},
+  {id:4, agent:'beacon',   title:'8 AM Morning Brief',                  when:'ready',   preview:'MRR $1,950 (+$350 wk) · 2 hot leads · Wayfinder price-war alert · 3 follow-ups due.'},
+];
+function updateApvBadge(){ const b=document.getElementById('apvBadge'); b.textContent=APPROVALS.length; b.classList.toggle('zero', APPROVALS.length===0); }
+function renderApprovals(){
+  const box=document.getElementById('approvals');
+  box.innerHTML = APPROVALS.length ? APPROVALS.map(a=>`
+    <div class="apv" style="--ac:${AGENTS[a.agent].ac}">
+      <div class="ah"><span class="chip">${avHTML(a.agent)}</span>
+        <span class="who" style="color:${AGENTS[a.agent].ac}">${AGENTS[a.agent].name}</span>
+        <span class="when">${a.when}</span></div>
+      <div class="ttl2">${a.title}</div>
+      <div class="prev">${a.preview}</div>
+      <div class="acts">
+        <button class="approve" onclick="resolveApv(${a.id})">✓ Approve</button>
+        <button class="edit" onclick="resolveApv(${a.id})">Edit</button>
+        <button class="reject" onclick="resolveApv(${a.id})">Reject</button>
+      </div>
+    </div>`).join('') : '<div class="apv-empty">All caught up — nothing needs your approval. ✓</div>';
+  updateApvBadge();
+}
+function resolveApv(id){ APPROVALS = APPROVALS.filter(a=>a.id!==id); renderApprovals(); }
+function switchPanel(tab){
+  document.querySelectorAll('.ptab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
+  document.getElementById('asections').style.display = tab==='activity'?'':'none';
+  document.getElementById('approvals').style.display = tab==='approvals'?'':'none';
+}
+
+/* ============================================================
+   ROAMERS + DOCK + state machine
+============================================================ */
+const roamEls = {};
+function renderRoamers(){
+  const box = document.getElementById('roamers');
+  box.innerHTML = Object.keys(AGENTS).map(k=>`
+    <div class="roamer" id="roam-${k}" style="--ac:${AGENTS[k].ac}">
+      <div class="av">${avHTML(k)}</div><div class="nm">${AGENTS[k].name.toUpperCase()}</div></div>`).join('');
+  Object.keys(AGENTS).forEach((k,i)=>{
+    const el = document.getElementById('roam-'+k);
+    roamEls[k] = { el, seed:i*1.7, ox: 0.18+0.64*((i%3)/2), oy: 0.30+0.42*(Math.floor(i/3)/1) };
+  });
+}
+function renderDock(){
+  const working = Object.keys(AGENTS).filter(k=>state[k]==='working');
+  const dock = document.getElementById('dock');
+  dock.classList.toggle('has', working.length>0);
+  dock.querySelector('.dlabel').innerHTML = `<span class="p"></span>ACTIVE · ${working.length} WORKING`;
+  dock.querySelectorAll('.dcard').forEach(n=>n.remove());
+  working.forEach(k=>{
+    const c=document.createElement('div'); c.className='dcard glass'; c.style.setProperty('--ac',AGENTS[k].ac);
+    c.innerHTML=`<div class="m">${avHTML(k)}</div><div class="info"><div class="nn" style="color:${AGENTS[k].ac}">${AGENTS[k].name}</div>
+      <div class="tk">${TASKLABEL[k]}</div><div class="pp"><i style="width:${30+Math.floor(Math.random()*55)}%"></i></div></div>`;
+    dock.appendChild(c);
+  });
+}
+function setWorking(k,on){
+  state[k]= on?'working':'idle';
+  roamEls[k].el.classList.toggle('hidden', on);
+  renderDock();
+  // reflect status pill in editor
+  const blk=document.querySelector(`.ablock[data-k="${k}"] .st`);
+  if(blk){ blk.textContent=on?'WORKING':'IDLE'; blk.classList.toggle('on',on); }
+}
+
+/* animate roamers (idle drift + bob) */
+let T=0;
+function tickRoamers(){
+  T+=0.006;
+  const W=innerWidth,H=innerHeight;
+  // Stay within the clear gap between whichever panels are open
+  const lb = document.body.classList.contains('editor-open') ? 332 : 46;
+  const rb = (document.body.classList.contains('activity-open') ? W-292 : W-46);
+  const span = Math.max(160, rb - lb - 78);
+  Object.entries(roamEls).forEach(([k,r])=>{
+    let x = lb + r.ox*span + Math.sin(T+r.seed)*Math.min(70, span*0.12);
+    let y = r.oy*H + Math.cos(T*0.8+r.seed)*46 + Math.sin(T*1.6+r.seed)*8 - 39;
+    x = Math.max(lb, Math.min(rb-78, x));
+    y = Math.max(86, Math.min(H-176, y));
+    if(state[k]!=='working') r.el.style.transform = `translate(${x}px,${y}px)`;
+  });
+  requestAnimationFrame(tickRoamers);
+}
+
+/* ============================================================
+   THREE.JS COSMIC SCENE (orb + nebula + stars)
+============================================================ */
+let voiceBright=0, voiceTarget=0;
+function radialTex(inner, outer){
+  const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d');
+  const grd=g.createRadialGradient(64,64,0,64,64,64);
+  grd.addColorStop(0,inner); grd.addColorStop(1,outer);
+  g.fillStyle=grd; g.fillRect(0,0,128,128); return new THREE.CanvasTexture(c);
+}
+function initThree(){
+  if(!window.THREE) return;
+  const canvas=document.getElementById('space');
+  const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight);
+  renderer.outputEncoding=THREE.sRGBEncoding;                 // correct, richer colors for her PBR textures
+  renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=0.92;  // cinematic rolloff
+  const scene=new THREE.Scene();
+  const cam=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,0.1,100); cam.position.z=11;
+
+  // starfield
+  const sg=new THREE.BufferGeometry(); const N=1300; const pos=new Float32Array(N*3);
+  for(let i=0;i<N;i++){ pos[i*3]=(Math.random()-.5)*80; pos[i*3+1]=(Math.random()-.5)*55; pos[i*3+2]=-Math.random()*40-2; }
+  sg.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const stars=new THREE.Points(sg,new THREE.PointsMaterial({color:0xbfe9dd,size:0.07,map:radialTex('rgba(255,255,255,1)','rgba(255,255,255,0)'),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
+  scene.add(stars);
+
+  // nebula clouds (additive sprites)
+  const neb=[];
+  [['rgba(45,212,168,.55)',-6,2,-12],['rgba(124,108,230,.5)',7,-3,-15],['rgba(90,150,220,.45)',2,5,-18]].forEach(([col,x,y,z])=>{
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(34,34),
+      new THREE.MeshBasicMaterial({map:radialTex(col,'rgba(0,0,0,0)'),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:.5}));
+    m.position.set(x,y,z); scene.add(m); neb.push(m);
+  });
+
+  // ORB — luminous RING outline (hollow centre; cosmos shows through) + soft atmosphere
+  const orb=new THREE.Group(); scene.add(orb);
+  const atmos=new THREE.Mesh(new THREE.PlaneGeometry(15,15),
+    new THREE.MeshBasicMaterial({map:radialTex('rgba(45,212,168,.30)','rgba(0,0,0,0)'),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:.8}));
+  atmos.position.z=-2; orb.add(atmos); // backlight halo behind ARIA so she pops off the cosmos
+  function ringTex(){
+    const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');
+    const grd=g.createRadialGradient(128,128,0,128,128,128);
+    grd.addColorStop(0.00,'rgba(45,212,168,0)');
+    grd.addColorStop(0.56,'rgba(45,212,168,0)');
+    grd.addColorStop(0.70,'rgba(120,250,222,0.92)');
+    grd.addColorStop(0.745,'rgba(170,255,238,1)');
+    grd.addColorStop(0.80,'rgba(45,212,168,0.45)');
+    grd.addColorStop(1.00,'rgba(45,212,168,0)');
+    g.fillStyle=grd;g.fillRect(0,0,256,256);return new THREE.CanvasTexture(c);
+  }
+  const ring=new THREE.Mesh(new THREE.PlaneGeometry(5.4,5.4),
+    new THREE.MeshBasicMaterial({map:ringTex(),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:1}));
+  orb.add(ring);
+
+  // SPEAKING CORONA — fluttering rays that radiate from the orb when ARIA speaks
+  const rayCount=120, innerR=2.35;
+  const rayGeo=new THREE.BufferGeometry();
+  const rayPos=new Float32Array(rayCount*2*3);
+  rayGeo.setAttribute('position',new THREE.BufferAttribute(rayPos,3));
+  const rayMat=new THREE.LineBasicMaterial({color:0xff1a2a,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
+  const corona=new THREE.LineSegments(rayGeo,rayMat); orb.add(corona);
+
+  // speaking state — driven by a simulated voice amplitude (real audio amplitude later)
+  let speaking=false, speakEnd=0, sAmp=0;
+  window.ariaSpeak=(sec=4.5)=>{
+    speaking=true; speakEnd=performance.now()+sec*1000;
+    if(typeof setStatus==='function') setStatus('speaking');
+    const h=document.getElementById('michint'); if(h&&!window.__listening) h.textContent='ARIA is speaking…';
+  };
+
+  // ARIA's centerpiece is the luminous ring orb ("the Luminous Orb" from the spec).
+  // Inside it: a plasma ENERGY CORE — a noise-driven shader sphere that roils & glows, reacting to her voice.
+  const NOISE_GLSL = `
+    vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x,289.0);}
+    vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
+    float snoise(vec3 v){
+      const vec2 C = vec2(1.0/6.0, 1.0/3.0); const vec4 D = vec4(0.0,0.5,1.0,2.0);
+      vec3 i=floor(v+dot(v,C.yyy)); vec3 x0=v-i+dot(i,C.xxx);
+      vec3 g=step(x0.yzx,x0.xyz); vec3 l=1.0-g; vec3 i1=min(g.xyz,l.zxy); vec3 i2=max(g.xyz,l.zxy);
+      vec3 x1=x0-i1+C.xxx; vec3 x2=x0-i2+2.0*C.xxx; vec3 x3=x0-1.0+3.0*C.xxx;
+      i=mod(i,289.0);
+      vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));
+      float n_=1.0/7.0; vec3 ns=n_*D.wyz-D.xzx;
+      vec4 j=p-49.0*floor(p*ns.z*ns.z); vec4 x_=floor(j*ns.z); vec4 y_=floor(j-7.0*x_);
+      vec4 x=x_*ns.x+ns.yyyy; vec4 y=y_*ns.x+ns.yyyy; vec4 h=1.0-abs(x)-abs(y);
+      vec4 b0=vec4(x.xy,y.xy); vec4 b1=vec4(x.zw,y.zw);
+      vec4 s0=floor(b0)*2.0+1.0; vec4 s1=floor(b1)*2.0+1.0; vec4 sh=-step(h,vec4(0.0));
+      vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy; vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+      vec3 p0=vec3(a0.xy,h.x); vec3 p1=vec3(a0.zw,h.y); vec3 p2=vec3(a1.xy,h.z); vec3 p3=vec3(a1.zw,h.w);
+      vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
+      p0*=norm.x; p1*=norm.y; p2*=norm.z; p3*=norm.w;
+      vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0); m=m*m;
+      return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
+    }`;
+  const coreUniforms={uTime:{value:0}, uVoice:{value:0}};
+  const coreMat=new THREE.ShaderMaterial({
+    uniforms:coreUniforms, transparent:true, depthWrite:false,
+    vertexShader: NOISE_GLSL + `
+      uniform float uTime; uniform float uVoice;
+      varying vec3 vNormal; varying vec3 vPos;
+      void main(){
+        vNormal=normalize(normalMatrix*normal);
+        float n=snoise(position*1.6 + vec3(0.0,0.0,uTime*0.35));
+        vec3 p=position + normal*((0.06+uVoice*0.26)*n);
+        vPos=p;
+        gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0);
+      }`,
+    fragmentShader: NOISE_GLSL + `
+      uniform float uTime; uniform float uVoice;
+      varying vec3 vNormal; varying vec3 vPos;
+      void main(){
+        float fres=pow(1.0-max(dot(normalize(vNormal),vec3(0.0,0.0,1.0)),0.0),2.0);
+        float n=snoise(vPos*2.2 + vec3(uTime*0.5,uTime*0.3,0.0));
+        float hot=smoothstep(0.25,0.85, n*0.5+0.5 + uVoice*0.35);
+        vec3 teal=vec3(0.16,0.84,0.66);
+        vec3 col=mix(teal*0.55, vec3(0.85,1.0,0.95), hot) + teal*fres*1.6;
+        gl_FragColor=vec4(col, 0.92);
+      }`
+  });
+  const coreSphere=new THREE.Mesh(new THREE.IcosahedronGeometry(1.15,5), coreMat);
+  scene.add(coreSphere);
+  coreSphere.visible=false; // replaced by the generated cosmic-orb image
+
+  // ── Cosmic ORB image (black bg → transparent via luminance alpha) ──
+  const orbTex=new THREE.TextureLoader().load('models/cosmic-orb.png');
+  orbTex.encoding=THREE.sRGBEncoding;
+  const orbUniforms={ map:{value:orbTex}, uVoice:{value:0} };
+  const orbMat=new THREE.ShaderMaterial({
+    uniforms:orbUniforms, transparent:true, depthWrite:false,
+    vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    fragmentShader:`uniform sampler2D map; uniform float uVoice; varying vec2 vUv;
+      void main(){
+        vec4 c=texture2D(map,vUv);
+        float lum=dot(c.rgb, vec3(0.299,0.587,0.114));
+        float a=smoothstep(0.025,0.16,lum);          // pure-black bg fades out, orb stays
+        gl_FragColor=vec4(c.rgb*(1.0+uVoice*0.6), a); // brightens when she speaks
+      }`
+  });
+  const orbPlane=new THREE.Mesh(new THREE.PlaneGeometry(3.6,3.6), orbMat);
+  scene.add(orbPlane);
+  ring.visible=false; // old teal ring off — replaced by the red+teal halo below
+
+  // ── Bright RED + TEAL halo around ARIA ──
+  function haloTex(){
+    const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');
+    const grd=g.createRadialGradient(128,128,0,128,128,128);
+    grd.addColorStop(0.00,'rgba(0,0,0,0)');
+    grd.addColorStop(0.50,'rgba(0,0,0,0)');
+    grd.addColorStop(0.60,'rgba(45,212,168,0.85)');   // teal inner edge (hugs the orb)
+    grd.addColorStop(0.68,'rgba(150,255,238,1.0)');   // bright blend
+    grd.addColorStop(0.77,'rgba(255,55,75,0.95)');    // red outer
+    grd.addColorStop(0.88,'rgba(255,30,50,0.45)');
+    grd.addColorStop(1.00,'rgba(255,30,50,0)');
+    g.fillStyle=grd;g.fillRect(0,0,256,256);return new THREE.CanvasTexture(c);
+  }
+  const halo=new THREE.Mesh(new THREE.PlaneGeometry(5.2,5.2),
+    new THREE.MeshBasicMaterial({map:haloTex(),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:1}));
+  scene.add(halo);
+
+  let composer=null;
+  if(THREE.EffectComposer && THREE.UnrealBloomPass){
+    composer=new THREE.EffectComposer(renderer);
+    composer.addPass(new THREE.RenderPass(scene,cam));
+    composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight), 0.35, 0.5, 0.93)); // strength, radius, threshold — high threshold so only glows bloom, not her white armor
+  }
+
+  addEventListener('resize',()=>{ renderer.setSize(innerWidth,innerHeight); cam.aspect=innerWidth/innerHeight; cam.updateProjectionMatrix(); if(composer) composer.setSize(innerWidth,innerHeight); });
+
+  // pointer parallax — gentle camera drift so the cosmos feels like real depth
+  let tpx=0,tpy=0,cpx=0,cpy=0;
+  addEventListener('pointermove',e=>{ tpx=(e.clientX/innerWidth-0.5); tpy=(e.clientY/innerHeight-0.5); });
+
+  const clock=new THREE.Clock();
+  let lastT=0;
+  (function loop(){
+    requestAnimationFrame(loop);
+    const t=clock.getElapsedTime();
+    const dt=t-lastT; lastT=t;
+    voiceBright += (voiceTarget - voiceBright)*0.08;
+    if(speaking && performance.now()>speakEnd){
+      speaking=false;
+      if(typeof setStatus==='function') setStatus(window.__listening?'listening':'idle');
+      const h=document.getElementById('michint'); if(h&&!window.__listening) h.textContent='Tap or say “Hey ARIA”';
+    }
+    const speakTarget = speaking ? Math.max(0, 0.45 + 0.55*(0.6*Math.sin(t*9.0)+0.4*Math.sin(t*14.3+1.3))) : 0;
+    sAmp += (speakTarget - sAmp)*0.25;
+    const idle = 0.5 + Math.sin(t*(Math.PI*2/4))*0.12;       // ~4s breathing
+    const b = Math.min(1, idle + voiceBright*0.9 + sAmp*0.7);
+    atmos.material.opacity = 0.22 + b*0.4; const as=1+b*0.12; atmos.scale.set(as,as,1); atmos.quaternion.copy(cam.quaternion);
+    const rs=1+b*0.09; ring.scale.set(rs,rs,1); ring.quaternion.copy(cam.quaternion);
+    ring.material.opacity = 0.82 + b*0.18;
+    ring.material.color.setRGB(0.18+b*0.55, 0.85+b*0.15, 0.7+b*0.28); // teal at rest, brightens toward white only at peak
+    // fluttering speaking corona
+    for(let i=0;i<rayCount;i++){
+      const ang=i/rayCount*Math.PI*2;
+      const flutter=0.5+0.5*Math.sin(t*13+i*0.8)*Math.sin(t*7.3+i*0.27);
+      const len=innerR+(0.7+flutter*3.8)*sAmp;
+      const o=i*6;
+      rayPos[o]=Math.cos(ang)*innerR; rayPos[o+1]=Math.sin(ang)*innerR; rayPos[o+2]=0;
+      rayPos[o+3]=Math.cos(ang)*len;  rayPos[o+4]=Math.sin(ang)*len;  rayPos[o+5]=0;
+    }
+    rayGeo.attributes.position.needsUpdate=true;
+    rayMat.opacity=Math.min(1,sAmp*2.15);
+    corona.rotation.z += 0.0025;
+    // plasma energy core
+    coreUniforms.uTime.value = t;
+    coreUniforms.uVoice.value = Math.min(1.0, Math.max(0.0,(b-0.45))*0.5 + sAmp*1.0);
+    coreSphere.rotation.y += 0.0012; coreSphere.rotation.x = Math.sin(t*0.2)*0.1;
+    // cosmic orb image: slow swirl + breathing + voice brightness
+    orbUniforms.uVoice.value = Math.min(1.0, Math.max(0.0,(b-0.45))*0.4 + sAmp*0.9);
+    const orbScale = 0.9 + sAmp*0.10;                 // 10% smaller at rest, grows ~10% while speaking
+    orbPlane.rotation.z += 0.0009; orbPlane.scale.setScalar(orbScale);
+    halo.material.opacity = 0.9 + Math.max(0,(b-0.5))*0.4 + sAmp*0.6;   // bright; brighter when speaking
+    halo.scale.setScalar(orbScale + 0.02 + sAmp*0.04);
+    halo.rotation.z -= 0.0006;
+    stars.material.opacity=0.7+Math.sin(t*1.3)*0.15;
+    neb.forEach((m,i)=>{ m.position.x += Math.sin(t*0.05+i)*0.003; m.position.y += Math.cos(t*0.04+i)*0.002; m.rotation.z=t*0.01*(i+1); m.quaternion.z=Math.sin(t*0.02); });
+    cpx+=(tpx-cpx)*0.05; cpy+=(tpy-cpy)*0.05;
+    cam.position.x=cpx*1.3; cam.position.y=-cpy*1.0; cam.lookAt(0,0,0);
+    if(composer) composer.render(); else renderer.render(scene,cam);
+  })();
+}
+
+/* ============================================================
+   MIC + WIRING
+============================================================ */
+let listening=false;
+function setStatus(s){
+  const dot=document.getElementById('statdot'), txt=document.getElementById('stattxt');
+  dot.className='statdot'+(s==='listening'?' listening':s==='processing'?' processing':'');
+  txt.textContent = s.charAt(0).toUpperCase()+s.slice(1);
+  document.body.classList.toggle('aria-busy', s!=='idle');
+}
+document.getElementById('micbtn').addEventListener('click',()=>{
+  listening=!listening; window.__listening=listening;
+  const btn=document.getElementById('micbtn'), icon=document.getElementById('micicon'), hint=document.getElementById('michint');
+  btn.classList.toggle('listening',listening);
+  if(listening){
+    icon.innerHTML='<rect x="7" y="7" width="10" height="10" rx="2.5" fill="currentColor" stroke="none"/>';
+    hint.textContent='Listening…'; setStatus('listening'); voiceTarget=0.9;
+  } else {
+    icon.innerHTML='<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>';
+    voiceTarget=0;
+    // ARIA processes, then speaks back (rays flutter)
+    if(window.ariaSpeak){ setStatus('processing'); hint.textContent='Thinking…'; setTimeout(()=>window.ariaSpeak(5),550); }
+    else { hint.textContent='Tap or say “Hey ARIA”'; setStatus('idle'); }
+  }
+});
+window.dispatchEvent && document.getElementById('micbtn').addEventListener('click',()=>window.dispatchEvent(new CustomEvent('aria:mic-toggle',{detail:{listening}})));
+
+// collapses
+(function(){
+  const ed=document.getElementById('editor'), h=document.getElementById('ehandle'), c=document.getElementById('ecol');
+  function setEditor(open){ ed.classList.toggle('collapsed',!open); h.style.display=open?'none':'grid'; document.body.classList.toggle('editor-open',open); }
+  c.addEventListener('click',()=>setEditor(false));
+  h.addEventListener('click',()=>setEditor(true));
+  setEditor(true);
+})();
+document.getElementById('acol').addEventListener('click',()=>{
+  const a=document.getElementById('activity'); const c=a.classList.toggle('collapsed');
+  document.getElementById('acol').textContent=c?'‹':'›';
+  document.body.classList.toggle('activity-open',!c);
+});
+document.body.classList.add('activity-open'); // activity panel starts open
+
+/* ============================================================
+   BOOT + DEMO automation
+============================================================ */
+renderEditor(); renderActivity(); renderApprovals(); renderRoamers(); renderDock();
+try{ initThree(); }catch(e){ console.warn('three init failed',e); }
+tickRoamers();
+
+// Demo: ARIA speaks shortly after load, then periodically, so the fluttering rays are visible.
+setTimeout(()=>window.ariaSpeak&&window.ariaSpeak(6), 1600);
+setInterval(()=>{ if(!window.__listening && window.ariaSpeak) window.ariaSpeak(5); }, 17000);
+
+// Demo: agents flip working↔idle so you see roam + dock behavior live.
+const slugs=Object.keys(AGENTS);
+setWorking('beacon',true); setWorking('hunter',true);
+setInterval(()=>{
+  const k=slugs[Math.floor(Math.random()*slugs.length)];
+  setWorking(k, state[k]!=='working');
+}, 2600);
+</script>
+</body>
+</html>
