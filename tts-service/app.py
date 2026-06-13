@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request, Response, HTTPException
 from pydantic import BaseModel
 from engine import XttsEngine
@@ -7,7 +9,19 @@ class SynthesizeRequest(BaseModel):
     text: str
     voice_id: str = "aria"
 
-app = FastAPI(title="ARIA TTS")
+
+@asynccontextmanager
+async def lifespan(app):
+    import os
+    if os.environ.get("TTS_SKIP_PREWARM") != "1":
+        try:
+            app.state.engine.load_model()
+            print("TTS: XTTS-v2 model loaded")
+        except Exception as exc:  # pragma: no cover - boot-time only
+            print(f"TTS prewarm failed: {exc}")
+    yield
+
+app = FastAPI(title="ARIA TTS", lifespan=lifespan)
 app.state.engine = XttsEngine()
 
 
@@ -45,14 +59,3 @@ def synthesize(req: SynthesizeRequest, request: Request):
         raise HTTPException(status_code=404, detail=f"unknown voice_id '{req.voice_id}'")
     return Response(content=wav, media_type="audio/wav")
 
-
-@app.on_event("startup")
-def _prewarm():
-    import os
-    if os.environ.get("TTS_SKIP_PREWARM") == "1":
-        return
-    try:
-        app.state.engine.load_model()
-        print("TTS: XTTS-v2 model loaded")
-    except Exception as exc:  # pragma: no cover - boot-time only
-        print(f"TTS prewarm failed: {exc}")
