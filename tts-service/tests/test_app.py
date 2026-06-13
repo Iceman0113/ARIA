@@ -34,3 +34,21 @@ def test_health_reports_loaded():
     res = client.get("/health")
     assert res.status_code == 200
     assert res.json() == {"status": "ok", "model_loaded": True, "voices": ["aria"]}
+
+
+def test_list_voices():
+    client = make_client()
+    res = client.get("/voices")
+    assert res.status_code == 200
+    assert res.json() == {"voices": ["aria"]}
+
+
+def test_register_voice_adds_it():
+    client = make_client()
+    res = client.post(
+        "/voices/echo",
+        content=b"RIFFfake",
+        headers={"Content-Type": "audio/wav"},
+    )
+    assert res.status_code == 200
+    assert "echo" in res.json()["voices"]

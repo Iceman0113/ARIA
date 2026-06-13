@@ -14,3 +14,18 @@ def get_engine(request: Request):
 def health(request: Request):
     eng = get_engine(request)
     return {"status": "ok", "model_loaded": eng.loaded, "voices": eng.list_voices()}
+
+
+@app.get("/voices")
+def list_voices(request: Request):
+    return {"voices": get_engine(request).list_voices()}
+
+
+@app.post("/voices/{voice_id}")
+async def register_voice(voice_id: str, request: Request):
+    body = await request.body()
+    if not body:
+        raise HTTPException(status_code=400, detail="empty clip body")
+    eng = get_engine(request)
+    eng.register(voice_id, body)
+    return {"voices": eng.list_voices()}
