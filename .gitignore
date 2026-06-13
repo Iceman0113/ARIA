@@ -6,3 +6,7 @@ logs/
 .superpowers/
 .claude/
 server/agent-specs/*.md
+tts-service/.venv/
+tts-service/voices/*.wav
+tts-service/__pycache__/
+tts-service/**/__pycache__/
