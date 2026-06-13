@@ -44,3 +44,15 @@ def synthesize(req: SynthesizeRequest, request: Request):
     except KeyError:
         raise HTTPException(status_code=404, detail=f"unknown voice_id '{req.voice_id}'")
     return Response(content=wav, media_type="audio/wav")
+
+
+@app.on_event("startup")
+def _prewarm():
+    import os
+    if os.environ.get("TTS_SKIP_PREWARM") == "1":
+        return
+    try:
+        app.state.engine.load_model()
+        print("TTS: XTTS-v2 model loaded")
+    except Exception as exc:  # pragma: no cover - boot-time only
+        print(f"TTS prewarm failed: {exc}")
