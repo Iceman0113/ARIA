@@ -18,6 +18,8 @@ class FakeEngine:
         self.voices.add(voice_id)
 
     def synthesize(self, text, voice_id):
+        if voice_id not in self.voices:
+            raise KeyError(voice_id)
         # 44-byte WAV header + 1 sample of silence — enough to assert "non-empty audio"
         return (b"RIFF$\x00\x00\x00WAVEfmt "
                 b"\x10\x00\x00\x00\x01\x00\x01\x00\x80>\x00\x00\x00}\x00\x00"
@@ -52,3 +54,18 @@ def test_register_voice_adds_it():
     )
     assert res.status_code == 200
     assert "echo" in res.json()["voices"]
+
+
+def test_synthesize_returns_wav():
+    client = make_client()
+    res = client.post("/synthesize", json={"text": "hello", "voice_id": "aria"})
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "audio/wav"
+    assert res.content[:4] == b"RIFF"
+    assert len(res.content) > 0
+
+
+def test_synthesize_unknown_voice_404():
+    client = make_client()
+    res = client.post("/synthesize", json={"text": "hi", "voice_id": "nope"})
+    assert res.status_code == 404

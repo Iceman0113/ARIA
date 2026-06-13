@@ -2,6 +2,11 @@ from fastapi import FastAPI, Request, Response, HTTPException
 from pydantic import BaseModel
 from engine import XttsEngine
 
+
+class SynthesizeRequest(BaseModel):
+    text: str
+    voice_id: str = "aria"
+
 app = FastAPI(title="ARIA TTS")
 app.state.engine = XttsEngine()
 
@@ -29,3 +34,13 @@ async def register_voice(voice_id: str, request: Request):
     eng = get_engine(request)
     eng.register(voice_id, body)
     return {"voices": eng.list_voices()}
+
+
+@app.post("/synthesize")
+def synthesize(req: SynthesizeRequest, request: Request):
+    eng = get_engine(request)
+    try:
+        wav = eng.synthesize(req.text, req.voice_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown voice_id '{req.voice_id}'")
+    return Response(content=wav, media_type="audio/wav")
