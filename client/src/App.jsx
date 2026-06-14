@@ -4,7 +4,6 @@ import { wakeWord } from './WakeWord.js';
 import Setup from './components/Setup.jsx';
 import TopBar from './shell/TopBar.jsx';
 import MicBar from './shell/MicBar.jsx';
-import NavChips from './shell/NavChips.jsx';
 import Console from './pages/Console.jsx';
 import Factory from './pages/Factory.jsx';
 import Voice from './pages/Voice.jsx';
@@ -337,6 +336,31 @@ function CofounderApp({ config }) {
     time: a.timestamp ? relativeTime(a.timestamp) : 'now',
   }));
 
+  // ── Derived: cosmic status ──────────────────────────────────────
+  // Map orbState ('idle'|'listening'|'thinking'|'speaking'|'sleeping')
+  // -> cosmic status ('idle'|'listening'|'processing'|'speaking')
+  const cosmicStatus = orbState === 'thinking'
+    ? 'processing'
+    : (orbState === 'sleeping' ? 'idle' : orbState);
+  const isSpeaking = orbState === 'speaking';
+
+  // Shared MicBar props used by Console (and by non-console routes below)
+  const micBarProps = {
+    state: orbState,
+    latency,
+    drawerOpen,
+    textValue: textInput,
+    onTextChange: setTextInput,
+    onMicClick: handleMicClick,
+    onSubmit: handleTextSubmit,
+    onToggleDrawer: () => setDrawerOpen(o => !o),
+    interim,
+    sttError,
+    heard,
+    wakeWord: alwaysOn,
+    onToggleWakeWord: toggleWakeWord,
+  };
+
   // ── Render ──────────────────────────────────────────────────────
   return (
     <>
@@ -347,44 +371,28 @@ function CofounderApp({ config }) {
         mrrTarget={MRR_TARGET}
         latency={latency}
         presence={orbState}
+        activeRoute={activeRoute}
+        onNav={setActiveRoute}
+        status={cosmicStatus}
       />
-      <NavChips active={activeRoute} onNav={setActiveRoute} />
       <FactoryHud ws={wsRef.current} onOpenFactory={() => setActiveRoute('factory')} />
 
       {activeRoute === 'console' && (
         <Console
-          drawerOpen={drawerOpen}
-          onCloseDrawer={() => setDrawerOpen(false)}
-          workStates={workStates}
-          refreshKey={mapRefreshKey}
-          mrr={currentMrr}
-          mrrTarget={MRR_TARGET}
-          spendToday={spend}
-          tokensToday={tokens}
-          avgLatency={latency}
-          actions={actions}
-          intel={intel}
+          status={cosmicStatus}
+          speaking={isSpeaking}
+          orbState={orbState}
+          {...micBarProps}
         />
       )}
 
       {activeRoute === 'factory' && <Factory ws={wsRef.current} />}
       {activeRoute === 'voice' && <Voice serverUrl={config.serverUrl} />}
 
-      <MicBar
-        state={orbState}
-        latency={latency}
-        drawerOpen={drawerOpen}
-        textValue={textInput}
-        onTextChange={setTextInput}
-        onMicClick={handleMicClick}
-        onSubmit={handleTextSubmit}
-        onToggleDrawer={() => setDrawerOpen(o => !o)}
-        interim={interim}
-        sttError={sttError}
-        heard={heard}
-        wakeWord={alwaysOn}
-        onToggleWakeWord={toggleWakeWord}
-      />
+      {/* MicBar for non-console routes (console route has its own MicBar inside) */}
+      {activeRoute !== 'console' && (
+        <MicBar {...micBarProps} />
+      )}
     </>
   );
 }

@@ -1,4 +1,18 @@
-export default function TopBar({ tokens, spend, mrr, mrrTarget, latency, presence }) {
+import NavChips from './NavChips.jsx';
+
+export default function TopBar({
+  // existing metric props (keep for backward compat + existing tests)
+  tokens,
+  spend,
+  mrr,
+  mrrTarget,
+  latency,
+  presence,
+  // new cosmic nav + status props
+  activeRoute,
+  onNav,
+  status,
+}) {
   const tokenStr = (tokens / 1000).toFixed(1) + 'K';
   const spendStr = '$' + spend.toFixed(2);
   const mrrStr   = '$' + mrr.toLocaleString();
@@ -13,6 +27,14 @@ export default function TopBar({ tokens, spend, mrr, mrrTarget, latency, presenc
     speaking:  'speaking',
   }[presence] || presence;
 
+  // Cosmic status dot label (maps orbState -> display string)
+  const statusLabel = {
+    idle:       'Idle',
+    listening:  'Listening',
+    processing: 'Processing',
+    speaking:   'Speaking',
+  }[status] || (status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Idle');
+
   return (
     <div className="top">
       <div className="brand-text">
@@ -21,6 +43,11 @@ export default function TopBar({ tokens, spend, mrr, mrrTarget, latency, presenc
         <span className="sub">Jack &amp; Jewell Consulting</span>
         <span className="loc">· Greenwood, IN</span>
       </div>
+
+      {/* Nav chips embedded in top bar when activeRoute/onNav are provided */}
+      {activeRoute !== undefined && onNav && (
+        <NavChips active={activeRoute} onNav={onNav} />
+      )}
 
       <div className="pills">
         <div className="pill tokens">
@@ -56,6 +83,14 @@ export default function TopBar({ tokens, spend, mrr, mrrTarget, latency, presenc
           <span className="dot" />
           {presenceText}
         </div>
+
+        {/* Cosmic status dot — only rendered when status prop is provided */}
+        {status !== undefined && (
+          <div className="statwrap">
+            <span className={'statdot ' + status} />
+            <span className="stattxt">{statusLabel}</span>
+          </div>
+        )}
       </div>
     </div>
   );

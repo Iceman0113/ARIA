@@ -1,61 +1,201 @@
-import { useEffect, useState } from 'react';
-import NeuralMap from '../neural-map/NeuralMap.jsx';
-import DashboardDrawer from '../dashboard/DashboardDrawer.jsx';
-import KpiStrip from '../dashboard/KpiStrip.jsx';
-import ActionsPanel from '../dashboard/ActionsPanel.jsx';
-import IntelFeed from '../dashboard/IntelFeed.jsx';
-import { MOCK_DATA } from '../neural-map/mockData.js';
+import { useEffect, useRef, useState } from 'react';
+import CosmicStage from '../cosmic/CosmicStage.jsx';
+import { agentView } from '../cosmic/agents.js';
+import MicBar from '../shell/MicBar.jsx';
 
 export default function Console({
-  drawerOpen, onCloseDrawer, workStates, refreshKey,
-  mrr, mrrTarget, spendToday, tokensToday, avgLatency,
-  actions, intel,
+  status = 'idle',
+  speaking = false,
+  // MicBar props passed through from App
+  orbState,
+  latency,
+  drawerOpen,
+  textValue,
+  onTextChange,
+  onMicClick,
+  onSubmit,
+  onToggleDrawer,
+  interim,
+  sttError,
+  heard,
+  wakeWord,
+  onToggleWakeWord,
 }) {
-  const [data, setData] = useState(MOCK_DATA);
-  const [loadError, setLoadError] = useState(null);
+  const rootRef = useRef(null);
 
+  // P1 simulated agent states — P2 wires live workStates
+  const [states] = useState({
+    beacon: { state: 'working', task: 'Monitoring inbox' },
+    hunter: { state: 'working', task: 'Qualifying lead' },
+  });
+
+  const [activityTab, setActivityTab] = useState('activity');
+
+  // Derived agent view
+  const agents = agentView(states);
+  const docked = agents.filter(a => a.docked);
+  const roaming = agents.filter(a => !a.docked);
+
+  // Recede panels while ARIA is busy (listening / speaking / processing)
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/neural-map');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const payload = await res.json();
-        if (cancelled) return;
-        if (Array.isArray(payload.nodes) && payload.nodes.length > 1) setData(payload);
-      } catch (err) {
-        if (!cancelled) setLoadError(err.message || 'fetch failed');
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [refreshKey]);
+    rootRef.current?.classList.toggle('aria-busy', status !== 'idle');
+  }, [status]);
+
+  // Panels start open — toggle via class so cosmic.css handles dock offsets
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    el.classList.add('editor-open', 'activity-open');
+  }, []);
 
   return (
-    <>
-      <div className="stage" id="stage">
-        <NeuralMap data={data} workStates={workStates || {}} />
-        <div className="vignette" />
-        {loadError && <div className="stage-error">Using mock data — server fetch failed: {loadError}</div>}
-      </div>
-      <DashboardDrawer open={drawerOpen} onClose={onCloseDrawer}>
-        <KpiStrip
-          mrr={mrr}
-          mrrTarget={mrrTarget}
-          mrrWeekDelta={350}
-          pipelineOpen={8400}
-          pipelineActive={4}
-          pipelineHot={1}
-          followUpsTotal={3}
-          followUpsOverdue={2}
-          spendToday={spendToday}
-          tokensToday={tokensToday}
-          avgLatency={avgLatency}
-        />
-        <div className="drawer-grid">
-          <ActionsPanel actions={actions} />
-          <IntelFeed items={intel} />
+    <div className="cosmic-root" ref={rootRef}>
+      {/* Background 3-D scene */}
+      <CosmicStage status={status} speaking={speaking} />
+
+      {/* LEFT — Agent Tasking */}
+      <div className="editor glass">
+        <span
+          className="ecol"
+          title="Collapse panel"
+          onClick={() => rootRef.current?.classList.toggle('editor-open')}
+        >
+          ‹
+        </span>
+        <h3>AGENT TASKING</h3>
+        <div className="sub">Edit, queue &amp; reorder what each agent works on.</div>
+        <div className="elist">
+          {agents.map(a => (
+            <div className="ablock" key={a.slug} style={{ '--ac': a.ac }}>
+              <div className="ah">
+                <div className="chip">
+                  <img
+                    src={'/avatars/' + a.slug + '.png'}
+                    alt={a.name}
+                    className="portrait"
+                  />
+                </div>
+                <span className="nm">{a.name.toUpperCase()}</span>
+                <span className={`st${a.docked ? ' on' : ''}`}>
+                  {a.docked ? 'WORKING' : 'ROAMING'}
+                </span>
+              </div>
+              {a.task && (
+                <div className="task">
+                  <span className="grip">⠿</span>
+                  <span className="txt">{a.task}</span>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
-      </DashboardDrawer>
-    </>
+      </div>
+
+      {/* TOP-CENTER — Dock (docked / working agents) */}
+      <div className={`dock${docked.length ? ' has' : ''}`}>
+        <div className="dlabel">
+          <span className="p" />
+          ACTIVE
+        </div>
+        {docked.map(a => (
+          <div className="dcard" key={a.slug} style={{ '--ac': a.ac }}>
+            <div className="m">
+              <img
+                src={'/avatars/' + a.slug + '.png'}
+                alt={a.name}
+                className="portrait"
+              />
+            </div>
+            <div className="info">
+              <div className="nn">{a.name}</div>
+              <div className="tk">{a.task}</div>
+              <div className="pp"><i /></div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* RIGHT — Activity / Approvals */}
+      <div className="activity glass">
+        <div className="atop">
+          <div className="ptabs">
+            <button
+              className={`ptab${activityTab === 'activity' ? ' active' : ''}`}
+              onClick={() => setActivityTab('activity')}
+            >
+              ACTIVITY
+            </button>
+            <button
+              className={`ptab${activityTab === 'approvals' ? ' active' : ''}`}
+              onClick={() => setActivityTab('approvals')}
+            >
+              APPROVALS<span className="tbadge zero">0</span>
+            </button>
+          </div>
+          <span
+            className="col"
+            title="Collapse"
+            onClick={() => rootRef.current?.classList.toggle('activity-open')}
+          >
+            ›
+          </span>
+        </div>
+        {activityTab === 'activity' ? (
+          <div className="asections">
+            <div className="asec">
+              <div className="sh">
+                <span>Recent</span>
+                <span className="ct">0</span>
+              </div>
+              <div className="apv-empty">Activity will appear here (P2)</div>
+            </div>
+          </div>
+        ) : (
+          <div className="approvals">
+            <div className="apv-empty">No pending approvals</div>
+          </div>
+        )}
+      </div>
+
+      {/* Roaming agents */}
+      {roaming.map((a, i) => (
+        <div
+          className="roamer"
+          key={a.slug}
+          style={{
+            '--ac': a.ac,
+            left: `${18 + i * 12}%`,
+            top: `${45 + (i % 2) * 12}%`,
+          }}
+        >
+          <div className="av">
+            <div className="wash" />
+            <img
+              src={'/avatars/' + a.slug + '.png'}
+              alt={a.name}
+              className="portrait"
+            />
+          </div>
+          <div className="nm">{a.name.toUpperCase()}</div>
+        </div>
+      ))}
+
+      {/* BOTTOM — Mic bar */}
+      <MicBar
+        state={orbState}
+        latency={latency}
+        drawerOpen={drawerOpen}
+        textValue={textValue}
+        onTextChange={onTextChange}
+        onMicClick={onMicClick}
+        onSubmit={onSubmit}
+        onToggleDrawer={onToggleDrawer}
+        interim={interim}
+        sttError={sttError}
+        heard={heard}
+        wakeWord={wakeWord}
+        onToggleWakeWord={onToggleWakeWord}
+      />
+    </div>
   );
 }
