@@ -24,9 +24,13 @@ export function createScene(canvas, { onStatus } = {}) {
   function canvasW() { return canvas.clientWidth  || window.innerWidth;  }
   function canvasH() { return canvas.clientHeight || window.innerHeight; }
 
+  // ── Texture tracking (GPU resource management) ───────────────────
+  const textures = [];
+  const trackTex = (t) => { textures.push(t); return t; };
+
   // ── Renderer ─────────────────────────────────────────────────────
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(canvasW(), canvasH(), false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;          // r128: outputEncoding = sRGBEncoding
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -51,7 +55,7 @@ export function createScene(canvas, { onStatus } = {}) {
     new THREE.PointsMaterial({
       color: 0xbfe9dd,
       size: 0.07,
-      map: radialTex('rgba(255,255,255,1)', 'rgba(255,255,255,0)'),
+      map: trackTex(radialTex('rgba(255,255,255,1)', 'rgba(255,255,255,0)')),
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
@@ -69,7 +73,7 @@ export function createScene(canvas, { onStatus } = {}) {
     const m = new THREE.Mesh(
       new THREE.PlaneGeometry(34, 34),
       new THREE.MeshBasicMaterial({
-        map: radialTex(col, 'rgba(0,0,0,0)'),
+        map: trackTex(radialTex(col, 'rgba(0,0,0,0)')),
         transparent: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
@@ -87,7 +91,7 @@ export function createScene(canvas, { onStatus } = {}) {
   const atmos = new THREE.Mesh(
     new THREE.PlaneGeometry(15, 15),
     new THREE.MeshBasicMaterial({
-      map: radialTex('rgba(45,212,168,.30)', 'rgba(0,0,0,0)'),
+      map: trackTex(radialTex('rgba(45,212,168,.30)', 'rgba(0,0,0,0)')),
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
@@ -116,7 +120,7 @@ export function createScene(canvas, { onStatus } = {}) {
   let speaking = false, speakEnd = 0, sAmp = 0, voiceBright = 0, voiceTarget = 0, ampGetter = null;
 
   // ── Cosmic ORB image (black bg → transparent via luminance alpha) ─
-  const orbTex = new THREE.TextureLoader().load('/models/cosmic-orb.png');
+  const orbTex = trackTex(new THREE.TextureLoader().load('/models/cosmic-orb.png'));
   orbTex.colorSpace = THREE.SRGBColorSpace;                  // r128: encoding = sRGBEncoding
   const orbUniforms = { map: { value: orbTex }, uVoice: { value: 0 } };
   const orbMat = new THREE.ShaderMaterial({
@@ -146,7 +150,7 @@ export function createScene(canvas, { onStatus } = {}) {
   const halo = new THREE.Mesh(
     new THREE.PlaneGeometry(5.2, 5.2),
     new THREE.MeshBasicMaterial({
-      map: haloTex(),
+      map: trackTex(haloTex()),
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
@@ -156,8 +160,7 @@ export function createScene(canvas, { onStatus } = {}) {
   scene.add(halo);
 
   // ── UnrealBloom post-processing ──────────────────────────────────
-  let composer = null;
-  composer = new EffectComposer(renderer);
+  const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, cam));
   composer.addPass(
     new UnrealBloomPass(
@@ -176,7 +179,11 @@ export function createScene(canvas, { onStatus } = {}) {
   };
   window.addEventListener('pointermove', onPointerMove);
 
-  // ── Resize ───────────────────────────────────────────────────────
+  // ── Resize listener (declared before api so dispose() can reference it) ──
+  const onResize = () => api.resize();
+  window.addEventListener('resize', onResize);
+
+  // ── Public API ───────────────────────────────────────────────────
   const api = {
     setSpeaking(sec = 4.5) {
       speaking = true;
@@ -194,14 +201,16 @@ export function createScene(canvas, { onStatus } = {}) {
       renderer.setSize(w, h, false);
       cam.aspect = w / h;
       cam.updateProjectionMatrix();
-      if (composer) composer.setSize(w, h);
+      composer.setSize(w, h);
     },
     dispose() {
       cancelAnimationFrame(rafId);
       window.removeEventListener('resize', onResize);
       window.removeEventListener('pointermove', onPointerMove);
       renderer.dispose();
-      composer?.dispose?.();
+      composer.passes.forEach(p => p.dispose?.());
+      composer.dispose();
+      textures.forEach(t => t.dispose());
       scene.traverse(o => {
         o.geometry?.dispose?.();
         if (o.material) {
@@ -212,9 +221,6 @@ export function createScene(canvas, { onStatus } = {}) {
     },
   };
 
-  const onResize = () => api.resize();
-  window.addEventListener('resize', onResize);
-
   // ── Animation loop ───────────────────────────────────────────────
   const clock = new THREE.Clock();
   let lastT = 0;
@@ -223,7 +229,7 @@ export function createScene(canvas, { onStatus } = {}) {
   (function loop() {
     rafId = requestAnimationFrame(loop);
     const t = clock.getElapsedTime();
-    const dt = t - lastT; lastT = t; // eslint-disable-line no-unused-vars
+    lastT = t;
 
     voiceBright += (voiceTarget - voiceBright) * 0.08;
 
@@ -270,7 +276,7 @@ export function createScene(canvas, { onStatus } = {}) {
     orbPlane.scale.setScalar(orbScale);
 
     // Halo
-    halo.material.opacity = 0.9 + Math.max(0, (b - 0.5)) * 0.4 + sAmp * 0.6;
+    halo.material.opacity = Math.min(1, 0.9 + Math.max(0, (b - 0.5)) * 0.4 + sAmp * 0.6);
     halo.scale.setScalar(orbScale + 0.02 + sAmp * 0.04);
     halo.rotation.z -= 0.0006;
 
@@ -281,8 +287,7 @@ export function createScene(canvas, { onStatus } = {}) {
     neb.forEach((m, i) => {
       m.position.x += Math.sin(t * 0.05 + i) * 0.003;
       m.position.y += Math.cos(t * 0.04 + i) * 0.002;
-      m.rotation.z = t * 0.01 * (i + 1);
-      m.quaternion.z = Math.sin(t * 0.02);
+      m.rotation.z = t * 0.01 * (i + 1) + Math.sin(t * 0.02);
     });
 
     // Pointer parallax camera drift
@@ -292,7 +297,7 @@ export function createScene(canvas, { onStatus } = {}) {
     cam.position.y = -cpy * 1.0;
     cam.lookAt(0, 0, 0);
 
-    if (composer) composer.render(); else renderer.render(scene, cam);
+    composer.render();
   })();
 
   return api;
