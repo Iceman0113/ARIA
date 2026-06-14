@@ -1,6 +1,7 @@
 const ROUTES = [
   { id: 'console',  label: 'Console' },
   { id: 'factory',  label: 'Factory' },
+  { id: 'voice',    label: 'Voice' },
   { id: 'clients',  label: 'Clients' },
   { id: 'pipeline', label: 'Pipeline' },
   { id: 'memory',   label: 'Memory' },

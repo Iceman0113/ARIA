@@ -2,6 +2,16 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import NavChips from './NavChips.jsx';
 
+describe('<NavChips> voice tab', () => {
+  it('renders a Voice chip and fires onNav("voice")', () => {
+    const onNav = vi.fn();
+    render(<NavChips active="console" onNav={onNav} />);
+    const chip = screen.getByRole('button', { name: /Voice/i });
+    fireEvent.click(chip);
+    expect(onNav).toHaveBeenCalledWith('voice');
+  });
+});
+
 describe('<NavChips>', () => {
   it('renders the six routes prefixed with ◦', () => {
     render(<NavChips active="console" onNav={() => {}} />);
