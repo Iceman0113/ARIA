@@ -17,6 +17,8 @@ import { buildNeuralMap } from './neural-map.js';
 import { mountFactoryRoutes } from './factory/routes.js';
 import { RegistryWatcher } from './factory/registry-watcher.js';
 import { factoryRegistry } from './factory/tool-registry.js';
+import { mountVoiceRoutes } from './voice/routes.js';
+import { cloneSpeak } from './voice/speak.js';
 
 const app = express();
 app.use(cors({ origin: ['http://localhost:5174', 'http://localhost:5173'] }));
@@ -239,6 +241,7 @@ app.get('/auth/linkedin/status', async (_, res) => {
 
 // ── Agent Factory ─────────────────────────────────────────────────
 mountFactoryRoutes(app, broadcast);
+mountVoiceRoutes(app);
 
 // ── TTS proxy (Microsoft Edge neural voices, free, no API key) ────
 // Frontend POSTs text, gets back audio/mpeg. Default voice: en-GB-SoniaNeural.
@@ -284,8 +287,25 @@ async function synthToBuffer(tts, text) {
 app.post('/speak', async (req, res) => {
   const { text } = req.body;
   if (!text?.trim()) return res.status(400).json({ error: 'No text provided' });
-  const voice = process.env.EDGE_TTS_VOICE || 'en-GB-SoniaNeural';
 
+  // Clone-first: use the active cloned voice when TTS_PROVIDER=clone.
+  if (process.env.TTS_PROVIDER === 'clone') {
+    try {
+      const wav = await cloneSpeak(text);
+      if (wav && wav.length) {
+        res.set('Content-Type', 'audio/wav');
+        res.set('Content-Length', wav.length);
+        res.set('Cache-Control', 'no-store');
+        return res.send(wav);
+      }
+    } catch (err) {
+      console.error('Clone TTS error (falling back to Edge):', err.message);
+    }
+    // fall through to Edge fallback below
+  }
+
+  // EDGE FALLBACK ──────────────────────────────────────────────────
+  const voice = process.env.EDGE_TTS_VOICE || 'en-GB-SoniaNeural';
   const myTurn = _ttsChain.then(async () => {
     const tts = await getEdgeTts(voice);
     return synthToBuffer(tts, text);
