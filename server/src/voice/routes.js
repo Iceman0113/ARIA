@@ -53,7 +53,9 @@ export function mountVoiceRoutes(app) {
   // DELETE /voices/:id
   app.delete('/voices/:id', async (req, res) => {
     try {
-      await deleteProfile(req.params.id);
+      // Re-slugify so the id matches the upload-time form and can't smuggle
+      // path separators (e.g. '../') into the Supabase storage key.
+      await deleteProfile(slugify(req.params.id));
       res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ error: err.message });
