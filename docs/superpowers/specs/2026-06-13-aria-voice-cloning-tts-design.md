@@ -100,7 +100,10 @@ server endpoints.
   - `POST /voices/active {voice_id}` — persist active voice (Supabase settings row).
   - `DELETE /voices/:id` — remove clip + dereference.
 - Persistence uses existing `server/src/supabase.js` (`getSupabase()`, `getTenantId()`).
-- TTS-host startup syncs/caches clips from Supabase Storage into `tts-service/voices/`.
+- The Python service stays Supabase-free. Instead of a startup sync, Node **lazily
+  rehydrates** it: on an `UnknownVoiceError` (engine restarted / cold cache), Node fetches
+  the clip from Supabase Storage, re-registers it with the Python service, and retries
+  once. This keeps the engine a portable, credential-free unit (see also the Boot note).
 
 ### 3. Client — Voice settings tab — `client/src/`
 
@@ -122,8 +125,10 @@ Failure at any step degrades: clone → Edge → browser TTS.
 Storage upload → register with Python service (compute latents) → returns `voice_id` →
 tab refreshes list.
 
-**Boot:** Python service loads model, syncs clips from Supabase Storage to local cache,
-pre-warms active voice.
+**Boot:** Python service loads the XTTS model and pre-warms. Its `voices/` cache starts
+empty after a restart; the first `/speak` for the active voice triggers Node's lazy
+rehydrate (fetch clip from Supabase → re-register → retry), so no startup Supabase sync
+is needed.
 
 ## Error handling & fallback
 
