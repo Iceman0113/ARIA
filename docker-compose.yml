@@ -1,3 +1,7 @@
+# NOTE: the voice-cloning TTS service (tts-service/) is intentionally NOT a
+# compose service. Docker on macOS has no Metal/GPU access, so XTTS must run
+# natively on the host. Reach it from the server via CLONE_TTS_URL.
+
 services:
   server:
     build: ./server

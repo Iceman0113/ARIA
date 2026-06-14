@@ -51,3 +51,22 @@ COFOUNDER_NAME     (optional) ARIA's name (default: ARIA)
 STRIPE_SECRET_KEY  (optional) Enables revenue tracking
 GITHUB_TOKEN       (optional) Enables repo monitoring
 PORT               (optional) Server port (default: 3001)
+
+## Voice cloning (self-hosted)
+
+ARIA can speak in a cloned voice via a local XTTS-v2 service (no third party).
+
+Run three processes locally:
+
+    # 1. TTS engine (native — NOT Docker; needs the Mac GPU)
+    cd tts-service && ./.venv/bin/uvicorn app:app --port 8020
+    # 2. server
+    cd server && npm run dev
+    # 3. client
+    cd client && npm run dev
+
+Set `TTS_PROVIDER=clone` in `server/.env`, open the **Voice** tab, upload a
+6–15s clip, set it active, and hit **Preview**. If the engine is down, ARIA
+automatically falls back to Edge TTS.
+
+See `tts-service/README.md` for first-time setup (Python 3.11 venv + model download).
