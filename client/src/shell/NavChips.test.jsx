@@ -13,9 +13,9 @@ describe('<NavChips> voice tab', () => {
 });
 
 describe('<NavChips>', () => {
-  it('renders the six routes prefixed with ◦', () => {
+  it('renders the seven routes prefixed with ◦', () => {
     render(<NavChips active="console" onNav={() => {}} />);
-    ['Console', 'Factory', 'Clients', 'Pipeline', 'Memory', 'Settings'].forEach(name => {
+    ['Console', 'Factory', 'Voice', 'Clients', 'Pipeline', 'Memory', 'Settings'].forEach(name => {
       expect(screen.getByText(new RegExp(name))).toBeInTheDocument();
     });
   });
