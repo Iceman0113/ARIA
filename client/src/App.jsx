@@ -7,6 +7,7 @@ import MicBar from './shell/MicBar.jsx';
 import NavChips from './shell/NavChips.jsx';
 import Console from './pages/Console.jsx';
 import Factory from './pages/Factory.jsx';
+import Voice from './pages/Voice.jsx';
 import { FactoryHud } from './components/FactoryHud';
 
 const CONFIG_KEY   = 'cofounder_config_v1';
@@ -367,6 +368,7 @@ function CofounderApp({ config }) {
       )}
 
       {activeRoute === 'factory' && <Factory ws={wsRef.current} />}
+      {activeRoute === 'voice' && <Voice serverUrl={config.serverUrl} />}
 
       <MicBar
         state={orbState}
