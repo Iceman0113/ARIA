@@ -8,6 +8,116 @@ function httpBase(serverUrl) {
   return (serverUrl || '').replace(/^ws/, 'http');
 }
 
+/* ── Presentational sub-components ── */
+
+function WaveMotif() {
+  // Decorative static CSS waveform bars
+  const heights = [30, 55, 75, 45, 90, 60, 80, 40, 65, 50, 85, 35, 70, 55, 40];
+  return (
+    <div className="voice-wave" aria-hidden="true">
+      {heights.map((h, i) => (
+        <span key={i} className="voice-wave-bar" style={{ height: `${h}%` }} />
+      ))}
+    </div>
+  );
+}
+
+function ActiveVoiceHero({ active, voices, onPreview }) {
+  const activeVoice = active ? voices.find((v) => v.voice_id === active) : null;
+
+  if (!activeVoice) {
+    return (
+      <div className="voice-hero voice-hero--empty">
+        <span className="voice-hero-empty-text">No active voice yet — set one below.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="voice-hero">
+      <div className="voice-hero-left">
+        <div className="voice-hero-orb" aria-hidden="true" />
+        <div className="voice-hero-meta">
+          <span className="voice-hero-name">{activeVoice.name}</span>
+          <span className="pill pill--active">active</span>
+        </div>
+      </div>
+      <WaveMotif />
+      <button type="button" className="btn btn--teal" onClick={onPreview}>
+        ▶ Preview
+      </button>
+    </div>
+  );
+}
+
+function VoiceRow({ voice, isActive, onSetActive, onRemove, busy }) {
+  return (
+    <div className={`voice-row${isActive ? ' voice-row--active' : ''}`}>
+      <div className="voice-row-orb" aria-hidden="true" />
+      <span className="voice-row-name">{voice.name}</span>
+      <div className="voice-row-actions">
+        {isActive
+          ? <span className="pill pill--active">active</span>
+          : (
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => onSetActive(voice.voice_id)}
+              disabled={busy}
+            >
+              Set active
+            </button>
+          )}
+        <button
+          type="button"
+          className="btn btn--danger"
+          onClick={() => onRemove(voice.voice_id)}
+          disabled={busy}
+          aria-label={`Delete ${voice.name}`}
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function UploadCard({ name, setName, fileRef, onUpload, busy }) {
+  return (
+    <div className="voice-upload">
+      <div className="voice-upload-header">
+        <span className="voice-upload-title">Upload Voice Clip</span>
+        <span className="voice-upload-hint">6–15 s, clean audio works best</span>
+      </div>
+      <div className="voice-upload-fields">
+        <input
+          type="text"
+          className="voice-input"
+          placeholder="Voice name (e.g. ARIA)"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          ref={fileRef}
+          type="file"
+          accept="audio/*"
+          className="voice-file-input"
+        />
+      </div>
+      <button
+        type="button"
+        className="btn btn--teal voice-upload-btn"
+        onClick={onUpload}
+        disabled={busy}
+      >
+        {busy ? 'Working…' : 'Upload clip'}
+      </button>
+    </div>
+  );
+}
+
+/* ── Page component — all state + handlers stay here ── */
+
 export default function Voice({ serverUrl }) {
   const [voices, setVoices] = useState([]);
   const [active, setActive] = useState(null);
@@ -73,39 +183,48 @@ export default function Voice({ serverUrl }) {
 
   return (
     <div className="cosmic-root" style={{ height: 'auto', minHeight: '100%', overflow: 'auto' }}>
-    <div className="voice-page">
-      <h2>Voice</h2>
-      <p className="muted">Upload a short, clean clip (6–15s). ARIA will speak in that voice.</p>
+      <div className="voice-page">
+        <div className="glass voice-panel">
 
-      <div className="voice-upload">
-        <input
-          type="text"
-          placeholder="Voice name (e.g. ARIA)"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input ref={fileRef} type="file" accept="audio/*" />
-        <button type="button" onClick={upload} disabled={busy}>
-          {busy ? 'Working…' : 'Upload clip'}
-        </button>
-        <button type="button" onClick={preview} disabled={busy}>Preview active</button>
+          {/* Header */}
+          <div className="voice-panel-header">
+            <h2 className="voice-panel-title">Voice</h2>
+            <p className="voice-panel-sub">ARIA speaks in your active voice.</p>
+          </div>
+
+          {/* Active voice hero */}
+          <ActiveVoiceHero active={active} voices={voices} onPreview={preview} />
+
+          {/* Voice list */}
+          <div className="voice-list">
+            {voices.length === 0
+              ? <div className="voice-row voice-row--empty">No cloned voices yet — upload one below.</div>
+              : voices.map((v) => (
+                <VoiceRow
+                  key={v.voice_id}
+                  voice={v}
+                  isActive={v.voice_id === active}
+                  onSetActive={makeActive}
+                  onRemove={remove}
+                  busy={busy}
+                />
+              ))}
+          </div>
+
+          {/* Upload card */}
+          <UploadCard
+            name={name}
+            setName={setName}
+            fileRef={fileRef}
+            onUpload={upload}
+            busy={busy}
+          />
+
+          {/* Error line */}
+          {error && <div className="voice-error">{error}</div>}
+
+        </div>
       </div>
-
-      {error && <div className="voice-error">{error}</div>}
-
-      <ul className="voice-list">
-        {voices.map((v) => (
-          <li key={v.voice_id} className={v.voice_id === active ? 'active' : ''}>
-            <span className="voice-name">{v.name}</span>
-            {v.voice_id === active
-              ? <span className="voice-badge">active</span>
-              : <button type="button" onClick={() => makeActive(v.voice_id)} disabled={busy}>Set active</button>}
-            <button type="button" onClick={() => remove(v.voice_id)} disabled={busy}>Delete</button>
-          </li>
-        ))}
-        {voices.length === 0 && <li className="muted">No cloned voices yet — upload one above.</li>}
-      </ul>
-    </div>
     </div>
   );
 }

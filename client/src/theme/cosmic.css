@@ -310,3 +310,164 @@ header {
   position: absolute; inset: 0; z-index: 2; pointer-events: none;
   background: radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(4,5,6,.55) 100%);
 }
+
+/* ── SHARED BUTTON + PILL UTILITIES (used by Voice page) ── */
+.btn {
+  font-family: var(--font); font-size: 11px; font-weight: 600; letter-spacing: .06em;
+  border-radius: 10px; padding: 7px 14px; cursor: pointer; border: 1px solid transparent;
+  transition: background .15s, border-color .15s, opacity .15s;
+}
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn--teal {
+  background: rgba(45,212,168,.18); border-color: rgba(45,212,168,.45); color: var(--teal);
+}
+.btn--teal:hover:not(:disabled) { background: rgba(45,212,168,.32); }
+.btn--ghost {
+  background: rgba(255,255,255,.05); border-color: var(--hair); color: var(--ink);
+}
+.btn--ghost:hover:not(:disabled) { background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.16); }
+.btn--danger {
+  background: rgba(255,80,90,.10); border-color: rgba(255,80,90,.35); color: #ff8a93;
+  padding: 7px 10px;
+}
+.btn--danger:hover:not(:disabled) { background: rgba(255,80,90,.22); }
+.pill {
+  display: inline-flex; align-items: center; font-size: 9px; font-weight: 700;
+  letter-spacing: .18em; text-transform: uppercase; border-radius: 20px; padding: 3px 9px;
+  border: 1px solid transparent;
+}
+.pill--active {
+  background: rgba(45,212,168,.14); border-color: rgba(45,212,168,.45); color: var(--teal);
+}
+
+/* ── VOICE PAGE ── */
+.voice-page {
+  display: flex; justify-content: center; align-items: flex-start;
+  padding: 72px 20px 48px; min-height: 100%;
+}
+
+.voice-panel {
+  width: 100%; max-width: 640px; border-radius: 20px; overflow: hidden;
+  display: flex; flex-direction: column; gap: 0;
+}
+
+/* Panel header */
+.voice-panel-header {
+  padding: 28px 28px 20px;
+  border-bottom: 1px solid var(--hair);
+}
+.voice-panel-title {
+  margin: 0 0 4px; font-size: 22px; font-weight: 800; letter-spacing: .04em; color: var(--ink);
+}
+.voice-panel-sub {
+  margin: 0; font-size: 12px; color: var(--dim); letter-spacing: .06em;
+}
+
+/* Active voice hero */
+.voice-hero {
+  display: flex; align-items: center; gap: 16px; padding: 20px 28px;
+  border-bottom: 1px solid var(--hair);
+  background: rgba(45,212,168,.04);
+}
+.voice-hero--empty {
+  justify-content: center;
+}
+.voice-hero-empty-text {
+  font-size: 12px; color: var(--dim); letter-spacing: .04em; font-style: italic;
+}
+.voice-hero-left {
+  display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;
+}
+.voice-hero-orb {
+  width: 44px; height: 44px; border-radius: 50%; flex: 0 0 44px;
+  background: radial-gradient(circle at 35% 35%, color-mix(in srgb, var(--teal) 60%, #0b1a16), #0e1a16);
+  border: 1.5px solid rgba(45,212,168,.5);
+  box-shadow: 0 0 18px -4px rgba(45,212,168,.45);
+}
+.voice-hero-meta {
+  display: flex; flex-direction: column; gap: 5px; min-width: 0;
+}
+.voice-hero-name {
+  font-size: 15px; font-weight: 700; letter-spacing: .05em; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Waveform motif (static decorative bars) */
+.voice-wave {
+  display: flex; align-items: center; gap: 3px; height: 36px; flex: 1;
+  overflow: hidden; opacity: .55;
+}
+.voice-wave-bar {
+  display: block; width: 3px; border-radius: 2px; flex: 0 0 3px;
+  background: linear-gradient(180deg, var(--teal), color-mix(in srgb, var(--teal) 30%, transparent));
+}
+
+/* Voice list */
+.voice-list {
+  display: flex; flex-direction: column;
+  border-bottom: 1px solid var(--hair);
+}
+.voice-row {
+  display: flex; align-items: center; gap: 12px; padding: 13px 28px;
+  border-bottom: 1px solid var(--hair);
+}
+.voice-row:last-child { border-bottom: none; }
+.voice-row--active {
+  background: rgba(45,212,168,.04);
+}
+.voice-row--empty {
+  font-size: 12px; color: var(--dim); font-style: italic; letter-spacing: .04em;
+  justify-content: center; padding: 22px 28px;
+}
+.voice-row-orb {
+  width: 32px; height: 32px; border-radius: 50%; flex: 0 0 32px;
+  background: radial-gradient(circle at 35% 35%, color-mix(in srgb, var(--teal) 40%, #0e1a16), #0e1016);
+  border: 1.5px solid var(--hair);
+}
+.voice-row--active .voice-row-orb {
+  border-color: rgba(45,212,168,.45);
+  box-shadow: 0 0 10px -3px rgba(45,212,168,.4);
+}
+.voice-row-name {
+  flex: 1; font-size: 13px; font-weight: 600; color: var(--ink); min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.voice-row-actions {
+  display: flex; align-items: center; gap: 8px; flex: 0 0 auto;
+}
+
+/* Upload card */
+.voice-upload {
+  display: flex; flex-direction: column; gap: 14px; padding: 24px 28px;
+  border-bottom: 1px solid var(--hair);
+}
+.voice-upload-header {
+  display: flex; align-items: baseline; gap: 10px;
+}
+.voice-upload-title {
+  font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--teal);
+}
+.voice-upload-hint {
+  font-size: 10px; color: var(--dim); letter-spacing: .04em;
+}
+.voice-upload-fields {
+  display: flex; flex-direction: column; gap: 10px;
+}
+.voice-input {
+  background: rgba(255,255,255,.04); border: 1px solid var(--hair); border-radius: 10px;
+  color: var(--ink); font-size: 12px; padding: 9px 12px; outline: none; font-family: var(--font);
+  transition: border-color .15s;
+}
+.voice-input:focus { border-color: var(--teal); }
+.voice-input::placeholder { color: var(--dim); }
+.voice-file-input {
+  font-family: var(--font); font-size: 11px; color: var(--dim); cursor: pointer;
+}
+.voice-upload-btn { align-self: flex-start; }
+
+/* Error line */
+.voice-error {
+  margin: 0; padding: 12px 28px;
+  font-size: 11px; color: #ff8a93; letter-spacing: .04em;
+  background: rgba(255,80,90,.08); border-top: 1px solid rgba(255,80,90,.2);
+}
