@@ -77,11 +77,17 @@ export async function getTask(id) {
  * Transition a task to a new state, enforcing the state machine.
  * Optionally patch additional fields (e.g. { result: '...' }).
  * Returns the updated row.
+ *
+ * Optimistic locking: the DB UPDATE is conditioned on the state that was
+ * read from the row (`.eq('state', task.state)`). If a concurrent request
+ * has already changed the state, the UPDATE matches 0 rows and we throw
+ * Error('state changed concurrently') so the caller can detect the race.
  */
 export async function setState(id, to, patch = {}) {
   const task = await getTask(id);
   if (!task) throw new Error(`agent task ${id} not found`);
   assertTransition(task.state, to);
+  const fromState = task.state;
   const update = {
     ...patch,
     state: to,
@@ -91,9 +97,11 @@ export async function setState(id, to, patch = {}) {
     .from('agent_tasks')
     .update(update)
     .eq('id', id)
+    .eq('state', fromState)
     .select('*')
     .single();
   if (error) throw new Error(`setState: ${error.message}`);
+  if (!data) throw new Error('state changed concurrently');
   return data;
 }
 

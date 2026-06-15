@@ -95,18 +95,27 @@ vi.mock('../supabase.js', () => ({
         },
         update: (patch) => {
           ctx.updatePatch = patch;
-          return {
-            eq: (col, val) => ({
-              select: () => ({
-                single: async () => {
-                  const idx = store.rows.findIndex(r => r[col] === val);
-                  if (idx === -1) return { data: null, error: { message: 'not found' } };
-                  store.rows[idx] = { ...store.rows[idx], ...patch };
-                  return { data: store.rows[idx], error: null };
-                },
-              }),
+          // Chainable multi-eq to support optimistic locking:
+          // .eq('id', x).eq('state', y).select().single()
+          const updateFilters = [];
+          const updateChain = {
+            eq: (col, val) => {
+              updateFilters.push({ col, val });
+              return updateChain;
+            },
+            select: () => ({
+              single: async () => {
+                const idx = store.rows.findIndex(r =>
+                  updateFilters.every(f => r[f.col] === f.val)
+                );
+                // 0 matched rows → null data (optimistic-lock loss signal)
+                if (idx === -1) return { data: null, error: null };
+                store.rows[idx] = { ...store.rows[idx], ...patch };
+                return { data: store.rows[idx], error: null };
+              },
             }),
           };
+          return updateChain;
         },
         delete: () => ({
           eq: (col, val) => ({

@@ -144,6 +144,16 @@ export function mountAgentRoutes(app, { broadcast }) {
       }
 
       if (task.proposed_action) {
+        // Atomic claim: transition awaiting_approval → publishing BEFORE calling
+        // the real publish tool. The optimistic lock in setState ensures only ONE
+        // concurrent approve request can win this transition; the loser's setState
+        // throws 'state changed concurrently' and never reaches callTool.
+        try {
+          await setState(req.params.id, 'publishing');
+        } catch (claimErr) {
+          return res.status(409).json({ error: 'already being processed' });
+        }
+
         // Execute the gated outward action now that a human has approved it.
         // Caller kind 'human_approved' bypasses the GATED_TOOLS interception —
         // this is the ONLY path where publish_to_linkedin actually fires.

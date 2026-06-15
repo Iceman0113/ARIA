@@ -40,18 +40,32 @@ vi.mock('../supabase.js', () => ({
           }),
         }),
         select: () => chain,
-        update: (patch) => ({
-          eq: (col, val) => ({
+        update: (patch) => {
+          // Build a chainable filter collector so we can handle both
+          //   .eq('id', x).select().single()                 (old single-filter form)
+          //   .eq('id', x).eq('state', y).select().single()  (optimistic-lock form)
+          const filters = [];
+          const updateChain = {
+            eq: (col, val) => {
+              filters.push({ col, val });
+              return updateChain;
+            },
             select: () => ({
               single: async () => {
-                const idx = store.rows.findIndex(r => r[col] === val);
-                if (idx === -1) return { data: null, error: { message: 'not found' } };
+                // Find a row matching ALL accumulated filters
+                const idx = store.rows.findIndex(r =>
+                  filters.every(f => r[f.col] === f.val)
+                );
+                // Optimistic-lock: 0 matched rows → return null data (no error)
+                // so that the caller's `if (!data)` check fires.
+                if (idx === -1) return { data: null, error: null };
                 store.rows[idx] = { ...store.rows[idx], ...patch };
                 return { data: store.rows[idx], error: null };
               },
             }),
-          }),
-        }),
+          };
+          return updateChain;
+        },
         delete: () => ({
           eq: (col, val) => ({
             eq: async (col2, val2) => {
@@ -689,6 +703,29 @@ describe('POST /agents/tasks/:id/approve — gated outward-action (proposed_acti
     expect(second.status).toBe(409);
 
     // callTool called exactly once — no double-publish
+    expect(mockCallTool).toHaveBeenCalledOnce();
+  });
+
+  it('concurrent approves → only ONE callTool fires, loser gets 409 (regression: double-publish)', async () => {
+    // Seed a single proposed-action task in awaiting_approval
+    store.rows.push(makeLinkedInTask('88'));
+
+    const app = makeApp();
+
+    // Fire both approve requests simultaneously (before either can commit the
+    // awaiting_approval → publishing claim to the store).  The optimistic lock
+    // in setState ensures exactly one wins; the loser throws 'state changed
+    // concurrently' and the handler returns 409.
+    const [first, second] = await Promise.all([
+      request(app).post('/agents/tasks/88/approve'),
+      request(app).post('/agents/tasks/88/approve'),
+    ]);
+
+    const statuses = [first.status, second.status].sort();
+    // One 200, one 409
+    expect(statuses).toEqual([200, 409]);
+
+    // Core safety invariant: publish executed exactly once — no double-post
     expect(mockCallTool).toHaveBeenCalledOnce();
   });
 

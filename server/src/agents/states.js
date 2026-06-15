@@ -2,6 +2,7 @@ export const AGENT_TASK_STATES = [
   'queued',
   'running',
   'awaiting_approval',
+  'publishing',
   'approved',
   'rejected',
   'failed',
@@ -10,7 +11,8 @@ export const AGENT_TASK_STATES = [
 export const TRANSITIONS = {
   queued:             new Set(['running', 'failed']),
   running:            new Set(['awaiting_approval', 'failed']),
-  awaiting_approval:  new Set(['approved', 'rejected', 'failed']),
+  awaiting_approval:  new Set(['publishing', 'approved', 'rejected', 'failed']),
+  publishing:         new Set(['approved', 'failed']),
   approved:           new Set(),
   rejected:           new Set(),
   failed:             new Set(),
