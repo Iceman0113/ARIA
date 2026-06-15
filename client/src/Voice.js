@@ -233,9 +233,23 @@ class VoiceEngine {
       const audio = new Audio(url);
       this._currentAudio = audio;
 
+      // Tap the audio through WebAudio so we can read amplitude for the orb.
+      // A new Audio() element is created per call, so per-call analyser creation is safe.
+      try {
+        if (!this.ttsCtx) this.ttsCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (this.ttsCtx.state === 'suspended') this.ttsCtx.resume();
+        const srcNode = this.ttsCtx.createMediaElementSource(audio);
+        const analyser = this.ttsCtx.createAnalyser();
+        analyser.fftSize = 256;
+        srcNode.connect(analyser);
+        analyser.connect(this.ttsCtx.destination); // keep audio audible
+        this._ttsAnalyser = analyser;
+      } catch (e) { /* WebAudio unavailable — fall back silently; playback still works */ }
+
       let done = false;
       const cleanup = (played) => {
         if (done) return; done = true;
+        this._ttsAnalyser = null;
         URL.revokeObjectURL(url); this._currentAudio = null; resolve(played);
       };
 
@@ -245,6 +259,16 @@ class VoiceEngine {
       // play() rejects immediately if autoplay is blocked — treat as not-played so fallback fires
       audio.play().catch(() => cleanup(false));
     });
+  }
+
+  getTtsAmplitude() {
+    const a = this._ttsAnalyser;
+    if (!a) return 0;
+    const buf = new Uint8Array(a.fftSize);
+    a.getByteTimeDomainData(buf);
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; }
+    return Math.min(1, Math.sqrt(sum / buf.length) * 3); // RMS scaled to ~0..1
   }
 
   // ── TTS — Browser built-in (fallback) ─────────────────────────────

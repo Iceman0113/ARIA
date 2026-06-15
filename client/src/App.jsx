@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { voice } from './Voice.js';
 import { wakeWord } from './WakeWord.js';
+import { useVoiceAmplitude } from './audio/useVoiceAmplitude.js';
 import Setup from './components/Setup.jsx';
 import TopBar from './shell/TopBar.jsx';
 import MicBar from './shell/MicBar.jsx';
@@ -344,6 +345,10 @@ function CofounderApp({ config }) {
     : (orbState === 'sleeping' ? 'idle' : orbState);
   const isSpeaking = orbState === 'speaking';
 
+  // Build a stable amplitude getter from the module-level voice singleton so the
+  // CosmicStage orb reacts to ARIA's real TTS output (not simulated amplitude).
+  const ampGetter = useVoiceAmplitude(voice);
+
   // Shared MicBar props used by Console (and by non-console routes below)
   const micBarProps = {
     state: orbState,
@@ -386,6 +391,7 @@ function CofounderApp({ config }) {
           intel={intel}
           actions={actions}
           ws={wsRef.current}
+          ampGetter={ampGetter}
           {...micBarProps}
         />
       )}

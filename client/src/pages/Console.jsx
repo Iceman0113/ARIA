@@ -11,6 +11,7 @@ export default function Console({
   intel = [],
   actions = [],
   ws = null,
+  ampGetter = null,
   // MicBar props passed through from App
   orbState,
   latency,
@@ -51,7 +52,7 @@ export default function Console({
   return (
     <div className="cosmic-root" ref={rootRef}>
       {/* Background 3-D scene */}
-      <CosmicStage status={status} speaking={speaking} />
+      <CosmicStage status={status} speaking={speaking} ampGetter={ampGetter} />
 
       {/* LEFT — Agent Tasking */}
       <div className="editor glass">
