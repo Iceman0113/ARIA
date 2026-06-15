@@ -1,5 +1,6 @@
 import { getSupabase } from '../supabase.js';
 import { ConfigDrivenAgent } from '../factory/runtime.js';
+import { callTool } from '../tools.js';
 import { runScout } from '../subagents/scout.js';
 import { runHunter } from '../subagents/hunter.js';
 import { runCreative } from '../subagents/creative.js';
@@ -83,20 +84,29 @@ async function runTask(task, row, broadcast) {
     broadcast({ type: 'agent_task.updated', id });
 
     let resultText;
+    let proposedActions;
     if (RICH_AGENTS[slug]) {
       // Route to the real subagent; result is already normalized to a string.
+      // Rich subagents do not return proposedActions — gating is only on the
+      // generic ConfigDrivenAgent path in v1.
       resultText = await RICH_AGENTS[slug](text, () => {});
     } else {
       // Generic config-driven path for beacon, verse, and any future agents.
       const agent = new ConfigDrivenAgent(row);
       const result = await agent.run(text, () => {});
-      // result is { text, shadow } from ConfigDrivenAgent.run()
+      // result is { text, shadow, proposedActions } from ConfigDrivenAgent.run()
       resultText = (result && typeof result.text === 'string')
         ? result.text
         : String(result ?? '');
+      proposedActions = result?.proposedActions;
     }
 
-    await setState(id, 'awaiting_approval', { result: resultText });
+    // If any gated outward-action was captured, persist the first as proposed_action.
+    const approvalPatch = { result: resultText };
+    if (Array.isArray(proposedActions) && proposedActions.length > 0) {
+      approvalPatch.proposed_action = proposedActions[0];
+    }
+    await setState(id, 'awaiting_approval', approvalPatch);
     broadcast({ type: 'agent_state', slug, state: 'idle' });
     broadcast({ type: 'agent_task.updated', id });
   } catch (err) {
@@ -132,6 +142,34 @@ export function mountAgentRoutes(app, { broadcast }) {
       if (task.state !== 'awaiting_approval') {
         return res.status(409).json({ error: `task is in state '${task.state}', not approvable` });
       }
+
+      if (task.proposed_action) {
+        // Execute the gated outward action now that a human has approved it.
+        // Caller kind 'human_approved' bypasses the GATED_TOOLS interception —
+        // this is the ONLY path where publish_to_linkedin actually fires.
+        try {
+          const execResult = await callTool(
+            task.proposed_action.tool,
+            task.proposed_action.input,
+            undefined,
+            undefined,
+            { caller: { kind: 'human_approved' } },
+          );
+          await setState(req.params.id, 'approved', {
+            result: (task.result || '') + '\n\n[published] ' + JSON.stringify(execResult).slice(0, 500),
+          });
+          broadcast({ type: 'agent_task.updated', id: req.params.id });
+          return res.json({ status: 'approved', id: req.params.id, executed: true });
+        } catch (execErr) {
+          await setState(req.params.id, 'failed', {
+            result: (task.result || '') + '\n\n[publish failed] ' + String(execErr?.message || execErr),
+          });
+          broadcast({ type: 'agent_task.updated', id: req.params.id });
+          return res.status(500).json({ status: 'failed', id: req.params.id, error: String(execErr?.message || execErr) });
+        }
+      }
+
+      // No proposed_action — plain approval (review/content tasks).
       await setState(req.params.id, 'approved');
       broadcast({ type: 'agent_task.updated', id: req.params.id });
       res.json({ status: 'approved', id: req.params.id });

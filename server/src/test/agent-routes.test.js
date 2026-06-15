@@ -94,11 +94,22 @@ vi.mock('../supabase.js', () => ({
   },
 }));
 
+// ── Mock: tools.js — callTool (now imported by routes.js for approve→execute) ─
+// Default: resolves successfully so non-proposed-action tests are unaffected.
+// Individual tests override mockCallTool behavior as needed.
+const mockCallTool = vi.fn(async () => ({ postId: 'li-test', status: 'published' }));
+vi.mock('../tools.js', () => ({
+  callTool: (...args) => mockCallTool(...args),
+  TOOL_DEFINITIONS: [],
+  getActiveToolDefinitions: () => [],
+  toApiTools: (defs) => defs,
+}));
+
 // ── Mock: ConfigDrivenAgent (no real Anthropic call) ─────────────────────────
 vi.mock('../factory/runtime.js', () => ({
   ConfigDrivenAgent: class {
     async run() {
-      return { text: 'CONFIG_DRIVEN_RESULT', shadow: false };
+      return { text: 'CONFIG_DRIVEN_RESULT', shadow: false, proposedActions: [] };
     }
   },
 }));
@@ -144,6 +155,9 @@ beforeEach(() => {
   store.rows = [];
   nextId = 1;
   broadcasts.length = 0;
+  // Reset callTool mock to default success so non-proposed-action tests unaffected
+  mockCallTool.mockClear();
+  mockCallTool.mockResolvedValue({ postId: 'li-test', status: 'published' });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -576,5 +590,202 @@ describe('DELETE /agents/:slug/tasks/:id', () => {
   it('returns 404 for unknown task', async () => {
     const res = await request(makeApp()).delete('/agents/scout/tasks/nonexistent');
     expect(res.status).toBe(404);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('POST /agents/tasks/:id/approve — gated outward-action (proposed_action present)', () => {
+  const PROPOSED = { tool: 'publish_to_linkedin', input: { content: 'Hello LinkedIn!', author: 'person' } };
+
+  function makeLinkedInTask(id, extra = {}) {
+    return {
+      id,
+      slug: 'verse',
+      state: 'awaiting_approval',
+      tenant_id: 'tenant-test',
+      text: 'Write and publish a LinkedIn post',
+      result: 'Here is your LinkedIn draft.',
+      proposed_action: PROPOSED,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      ...extra,
+    };
+  }
+
+  it('approve → callTool called exactly once with human_approved caller', async () => {
+    store.rows.push(makeLinkedInTask('80'));
+
+    const res = await request(makeApp()).post('/agents/tasks/80/approve');
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('approved');
+    expect(res.body.executed).toBe(true);
+
+    // Safety property 2: callTool called exactly once, with human_approved
+    expect(mockCallTool).toHaveBeenCalledOnce();
+    expect(mockCallTool).toHaveBeenCalledWith(
+      'publish_to_linkedin',
+      { content: 'Hello LinkedIn!', author: 'person' },
+      undefined,
+      undefined,
+      { caller: { kind: 'human_approved' } },
+    );
+  });
+
+  it('approve → task ends in approved state with [published] appended to result', async () => {
+    store.rows.push(makeLinkedInTask('81'));
+    mockCallTool.mockResolvedValueOnce({ postId: 'li-abc', status: 'published' });
+
+    await request(makeApp()).post('/agents/tasks/81/approve');
+
+    const updated = store.rows.find(r => r.id === '81');
+    expect(updated.state).toBe('approved');
+    expect(updated.result).toContain('[published]');
+    expect(updated.result).toContain('li-abc');
+  });
+
+  it('approve → broadcasts agent_task.updated', async () => {
+    store.rows.push(makeLinkedInTask('82'));
+
+    await request(makeApp()).post('/agents/tasks/82/approve');
+
+    expect(broadcasts.some(e => e.type === 'agent_task.updated' && e.id === '82')).toBe(true);
+  });
+
+  it('approve with throwing callTool → task ends in failed state, returns 500', async () => {
+    store.rows.push(makeLinkedInTask('83'));
+    mockCallTool.mockRejectedValueOnce(new Error('LinkedIn API error'));
+
+    const res = await request(makeApp()).post('/agents/tasks/83/approve');
+
+    expect(res.status).toBe(500);
+    expect(res.body.status).toBe('failed');
+    expect(res.body.error).toContain('LinkedIn API error');
+
+    const updated = store.rows.find(r => r.id === '83');
+    expect(updated.state).toBe('failed');
+    expect(updated.result).toContain('[publish failed]');
+    expect(updated.result).toContain('LinkedIn API error');
+  });
+
+  it('approve with throwing callTool → still broadcasts agent_task.updated', async () => {
+    store.rows.push(makeLinkedInTask('84'));
+    mockCallTool.mockRejectedValueOnce(new Error('Network error'));
+
+    await request(makeApp()).post('/agents/tasks/84/approve');
+
+    expect(broadcasts.some(e => e.type === 'agent_task.updated' && e.id === '84')).toBe(true);
+  });
+
+  it('double-approve → 409 on second call (safety: no double-publish)', async () => {
+    store.rows.push(makeLinkedInTask('85'));
+
+    const app = makeApp();
+    const first = await request(app).post('/agents/tasks/85/approve');
+    expect(first.status).toBe(200);
+
+    // Safety property 3: state is now 'approved', not 'awaiting_approval'
+    const second = await request(app).post('/agents/tasks/85/approve');
+    expect(second.status).toBe(409);
+
+    // callTool called exactly once — no double-publish
+    expect(mockCallTool).toHaveBeenCalledOnce();
+  });
+
+  it('reject → callTool never called (safety: no publish on reject)', async () => {
+    store.rows.push(makeLinkedInTask('86'));
+
+    const res = await request(makeApp()).post('/agents/tasks/86/reject');
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('rejected');
+
+    expect(mockCallTool).not.toHaveBeenCalled();
+  });
+
+  it('plain task (no proposed_action) still approves normally without callTool', async () => {
+    store.rows.push({
+      id: '87',
+      slug: 'scout',
+      state: 'awaiting_approval',
+      tenant_id: 'tenant-test',
+      text: 'Task',
+      result: 'Scout results here',
+      // no proposed_action
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    const res = await request(makeApp()).post('/agents/tasks/87/approve');
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('approved');
+
+    // Safety property 4: callTool not called for plain tasks
+    expect(mockCallTool).not.toHaveBeenCalled();
+
+    const updated = store.rows.find(r => r.id === '87');
+    expect(updated.state).toBe('approved');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('runTask — proposed_action stored on task (ConfigDrivenAgent path)', () => {
+  it('stores proposed_action when ConfigDrivenAgent.run returns proposedActions', async () => {
+    // Override the mock to return a proposedActions array
+    ConfigDrivenAgent.prototype.run = async function () {
+      return {
+        text: 'Here is your LinkedIn draft.',
+        shadow: false,
+        proposedActions: [{ tool: 'publish_to_linkedin', input: { content: 'Draft post', author: 'person' } }],
+      };
+    };
+
+    store.rows.push({
+      id: 'agent-row',
+      slug: 'verse',
+      status: 'active',
+      system_prompt: 'You are Verse.',
+      tool_allowlist: ['publish_to_linkedin'],
+      model: 'claude-haiku',
+    });
+
+    const app = makeApp();
+    const res = await request(app).post('/agents/verse/tasks').send({ text: 'Draft and post to LinkedIn' });
+    expect(res.status).toBe(201);
+
+    await flushAsync(50);
+
+    const taskId = res.body.task.id;
+    const updated = store.rows.find(r => r.id === taskId);
+    expect(updated.state).toBe('awaiting_approval');
+    expect(updated.proposed_action).toEqual({
+      tool: 'publish_to_linkedin',
+      input: { content: 'Draft post', author: 'person' },
+    });
+    expect(updated.result).toBe('Here is your LinkedIn draft.');
+  });
+
+  it('does NOT store proposed_action when proposedActions is empty', async () => {
+    ConfigDrivenAgent.prototype.run = async function () {
+      return { text: 'Research complete.', shadow: false, proposedActions: [] };
+    };
+
+    store.rows.push({
+      id: 'agent-row',
+      slug: 'beacon',
+      status: 'active',
+      system_prompt: 'You are Beacon.',
+      tool_allowlist: [],
+      model: 'claude-haiku',
+    });
+
+    const app = makeApp();
+    const res = await request(app).post('/agents/beacon/tasks').send({ text: 'Check competitor changes' });
+    await flushAsync(50);
+
+    const taskId = res.body.task.id;
+    const updated = store.rows.find(r => r.id === taskId);
+    expect(updated.state).toBe('awaiting_approval');
+    // proposed_action should not be set (or undefined)
+    expect(updated.proposed_action).toBeUndefined();
   });
 });

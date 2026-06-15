@@ -360,10 +360,30 @@ export function toApiTools(defs) {
 
 // ── Tool dispatcher ───────────────────────────────────────────────
 
+/**
+ * Tools that require human approval before executing outward actions.
+ * When called by a spawned_agent, these are captured into ctx.proposedActions
+ * and returned immediately without execution. The ONLY execution path is
+ * the approve handler in agents/routes.js with caller { kind: 'human_approved' }.
+ */
+const GATED_TOOLS = new Set(['publish_to_linkedin']);
+
 export async function callTool(name, input, onEvent, broadcast = () => {}, ctx) {
   // broadcast defaults to a no-op so callers that don't need it (e.g. monitor.js
   // calling metric tools with 2 args) can't accidentally pass undefined into a
   // tool that forwards it (delegate_to_factory → SpawnPipeline).
+
+  // ── Gated outward-action interception ─────────────────────────────────────
+  // Safety property: a gated tool invoked by a spawned_agent is NEVER executed
+  // inline — it is only captured for human review and executed later via the
+  // approve handler (caller kind: 'human_approved').
+  if (GATED_TOOLS.has(name) && ctx?.caller?.kind === 'spawned_agent') {
+    if (Array.isArray(ctx.proposedActions)) {
+      ctx.proposedActions.push({ tool: name, input });
+    }
+    return { queued: true, note: 'Drafted and queued for human approval. Do not retry.' };
+  }
+
   // Layer 3 of containment (spec §8): Hermes ban for spawned agents.
   if (name === 'delegate_to_hermes' && ctx?.caller?.kind === 'spawned_agent') {
     throw new Error(`Hermes is unreachable from Factory-spawned agents (caller: ${ctx.caller.slug})`);

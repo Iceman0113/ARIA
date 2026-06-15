@@ -30,6 +30,9 @@ export class ConfigDrivenAgent {
     const messages = [{ role: 'user', content: userMessage }];
     const shadow = this._row.status === 'shadow';
     const tag = shadow ? '[SHADOW] ' : '';
+    // Accumulates any gated outward-action calls intercepted during this run.
+    // Shared across all tool calls so every iteration can push to the same array.
+    const proposedActions = [];
 
     console.log(`${tag}dispatch_to_${this._row.slug} ←`, (userMessage || '').slice(0, 80));
     onEvent?.({ type: 'tool_call', name: `dispatch_to_${this._row.slug}`, detail: shadow ? 'shadow' : undefined });
@@ -50,8 +53,9 @@ export class ConfigDrivenAgent {
         const results = await Promise.all(
           toolBlocks.map(async (tool) => {
             onEvent?.({ type: 'tool_call', name: `${this._row.slug}/${tool.name}` });
-            // Pass caller context so callTool's Hermes ban (Layer 3) can detect us
-            const ctx = { caller: { kind: 'spawned_agent', slug: this._row.slug } };
+            // Pass caller context so callTool's Hermes ban (Layer 3) can detect us,
+            // and proposedActions so gated tools can be captured without executing.
+            const ctx = { caller: { kind: 'spawned_agent', slug: this._row.slug }, proposedActions };
             const result = await callTool(tool.name, tool.input, onEvent, /*broadcast*/ undefined, ctx);
             return {
               type: 'tool_result',
@@ -68,9 +72,9 @@ export class ConfigDrivenAgent {
       const text = (response.content || []).find(b => b.type === 'text')?.text || '';
       console.log(`${tag}dispatch_to_${this._row.slug} →`, text.slice(0, 80));
       onEvent?.({ type: 'tool_result', name: `dispatch_to_${this._row.slug}`, preview: text.slice(0, 120) });
-      return { text, shadow };
+      return { text, shadow, proposedActions };
     }
 
-    return { text: '', error: `max iterations (${MAX_ITER}) reached`, shadow };
+    return { text: '', error: `max iterations (${MAX_ITER}) reached`, shadow, proposedActions };
   }
 }
