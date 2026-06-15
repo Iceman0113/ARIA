@@ -244,12 +244,15 @@ class VoiceEngine {
         srcNode.connect(analyser);
         analyser.connect(this.ttsCtx.destination); // keep audio audible
         this._ttsAnalyser = analyser;
+        this._ttsSrc = srcNode;
       } catch (e) { /* WebAudio unavailable — fall back silently; playback still works */ }
 
       let done = false;
       const cleanup = (played) => {
         if (done) return; done = true;
-        this._ttsAnalyser = null;
+        // Disconnect the per-utterance WebAudio nodes so they don't accumulate.
+        try { this._ttsSrc?.disconnect(); this._ttsAnalyser?.disconnect(); } catch (e) { /* ignore */ }
+        this._ttsAnalyser = null; this._ttsSrc = null;
         URL.revokeObjectURL(url); this._currentAudio = null; resolve(played);
       };
 
