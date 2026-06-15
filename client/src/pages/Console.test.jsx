@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
 vi.mock('../cosmic/CosmicStage.jsx', () => ({ default: () => null }));
 vi.mock('../shell/MicBar.jsx', () => ({ default: () => null }));
@@ -212,5 +212,260 @@ describe('Console Agent Tasking CRUD', () => {
     const taskRow = container.querySelector('.task');
     expect(taskRow.querySelector('.x')).toBeFalsy();
     expect(taskRow.querySelector('.tstate').textContent).toBe('running');
+  });
+});
+
+// ── Approvals card — publish branch ──────────────────────────────────────────
+
+// Build a fetch mock that seeds the approvals endpoint with a given agent task list
+function makeFetchWithApprovals(agentApprovalTasks = []) {
+  return vi.fn(async (url, opts = {}) => {
+    // Per-agent tasks (AgentBlock)
+    const agentTaskMatch = url.match(/\/agents\/([^/]+)\/tasks$/);
+    if (agentTaskMatch && (!opts.method || opts.method === 'GET')) {
+      return { ok: true, status: 200, json: async () => ({ tasks: [] }) };
+    }
+    // Approvals: factory pending
+    if (url.includes('/factory/pending')) {
+      return { ok: true, status: 200, json: async () => [] };
+    }
+    // Approvals: agent tasks awaiting approval — return our seeded list
+    if (url.includes('/agents/tasks')) {
+      return { ok: true, status: 200, json: async () => ({ tasks: agentApprovalTasks }) };
+    }
+    // approve / reject endpoints
+    return { ok: true, status: 200, json: async () => ({}) };
+  });
+}
+
+describe('Console Approvals — publish card', () => {
+  it('publish pending item renders the ▲ Will publish to LinkedIn banner', async () => {
+    global.fetch = makeFetchWithApprovals([
+      {
+        id: 'li-1',
+        slug: 'hermes',
+        text: 'Post update',
+        state: 'awaiting_approval',
+        result: '',
+        proposed_action: {
+          tool: 'publish_to_linkedin',
+          input: { content: 'Big news from ARIA!', author: 'Randy Jewell' },
+        },
+      },
+    ]);
+
+    const { container } = render(<Console status="idle" />);
+
+    // Switch to Approvals tab
+    const approvalsBtn = await waitFor(() => {
+      const btn = [...container.querySelectorAll('.ptab')].find(b => b.textContent.includes('APPROVALS'));
+      expect(btn).toBeTruthy();
+      return btn;
+    });
+    fireEvent.click(approvalsBtn);
+
+    await waitFor(() => {
+      expect(container.querySelector('.apv-publish')).toBeTruthy();
+    });
+
+    expect(container.querySelector('.apv-publish').textContent).toContain('Will publish to LinkedIn');
+  });
+
+  it('publish pending item renders the post content', async () => {
+    global.fetch = makeFetchWithApprovals([
+      {
+        id: 'li-2',
+        slug: 'hermes',
+        text: 'Post update',
+        state: 'awaiting_approval',
+        result: '',
+        proposed_action: {
+          tool: 'publish_to_linkedin',
+          input: { content: 'Big news from ARIA!', author: 'Randy Jewell' },
+        },
+      },
+    ]);
+
+    const { container } = render(<Console status="idle" />);
+
+    const approvalsBtn = await waitFor(() => {
+      const btn = [...container.querySelectorAll('.ptab')].find(b => b.textContent.includes('APPROVALS'));
+      expect(btn).toBeTruthy();
+      return btn;
+    });
+    fireEvent.click(approvalsBtn);
+
+    await waitFor(() => {
+      expect(container.querySelector('.apv-post')).toBeTruthy();
+    });
+
+    expect(container.querySelector('.apv-post').textContent).toContain('Big news from ARIA!');
+  });
+
+  it('publish pending item renders "Approve & publish" button (not "✓ Approve")', async () => {
+    global.fetch = makeFetchWithApprovals([
+      {
+        id: 'li-3',
+        slug: 'hermes',
+        text: 'Post update',
+        state: 'awaiting_approval',
+        result: '',
+        proposed_action: {
+          tool: 'publish_to_linkedin',
+          input: { content: 'Hello world!', author: 'Randy Jewell' },
+        },
+      },
+    ]);
+
+    const { container } = render(<Console status="idle" />);
+
+    const approvalsBtn = await waitFor(() => {
+      const btn = [...container.querySelectorAll('.ptab')].find(b => b.textContent.includes('APPROVALS'));
+      expect(btn).toBeTruthy();
+      return btn;
+    });
+    fireEvent.click(approvalsBtn);
+
+    await waitFor(() => {
+      const approveBtn = container.querySelector('.apv .approve');
+      expect(approveBtn).toBeTruthy();
+      expect(approveBtn.textContent).toContain('Approve & publish');
+    });
+
+    // Should NOT say "✓ Approve"
+    const approveBtn = container.querySelector('.apv .approve');
+    expect(approveBtn.textContent).not.toContain('✓ Approve');
+  });
+
+  it('clicking "Approve & publish" calls the approve endpoint', async () => {
+    const mockFetch = makeFetchWithApprovals([
+      {
+        id: 'li-4',
+        slug: 'hermes',
+        text: 'Post update',
+        state: 'awaiting_approval',
+        result: '',
+        proposed_action: {
+          tool: 'publish_to_linkedin',
+          input: { content: 'Hello world!', author: 'Randy Jewell' },
+        },
+      },
+    ]);
+    global.fetch = mockFetch;
+
+    const { container } = render(<Console status="idle" />);
+
+    const approvalsBtn = await waitFor(() => {
+      const btn = [...container.querySelectorAll('.ptab')].find(b => b.textContent.includes('APPROVALS'));
+      expect(btn).toBeTruthy();
+      return btn;
+    });
+    fireEvent.click(approvalsBtn);
+
+    const approveBtn = await waitFor(() => {
+      const btn = container.querySelector('.apv .approve');
+      expect(btn).toBeTruthy();
+      return btn;
+    });
+
+    fireEvent.click(approveBtn);
+
+    await waitFor(() => {
+      const approveCalls = mockFetch.mock.calls.filter(
+        ([url, opts]) =>
+          url.includes('/agents/tasks/li-4/approve') && opts?.method === 'POST'
+      );
+      expect(approveCalls.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('plain pending item (no proposed_action) renders "✓ Approve" — not "Approve & publish"', async () => {
+    global.fetch = makeFetchWithApprovals([
+      {
+        id: 'plain-1',
+        slug: 'scout',
+        text: 'Research leads',
+        state: 'awaiting_approval',
+        result: 'Found 3 leads',
+        // no proposed_action
+      },
+    ]);
+
+    const { container } = render(<Console status="idle" />);
+
+    const approvalsBtn = await waitFor(() => {
+      const btn = [...container.querySelectorAll('.ptab')].find(b => b.textContent.includes('APPROVALS'));
+      expect(btn).toBeTruthy();
+      return btn;
+    });
+    fireEvent.click(approvalsBtn);
+
+    await waitFor(() => {
+      const approveBtn = container.querySelector('.apv .approve');
+      expect(approveBtn).toBeTruthy();
+      expect(approveBtn.textContent).toContain('✓ Approve');
+    });
+
+    // Should NOT show publish banner
+    expect(container.querySelector('.apv-publish')).toBeFalsy();
+  });
+
+  it('plain pending item does not render .apv-post or .apv-warn', async () => {
+    global.fetch = makeFetchWithApprovals([
+      {
+        id: 'plain-2',
+        slug: 'scout',
+        text: 'Research leads',
+        state: 'awaiting_approval',
+        result: 'Found 3 leads',
+      },
+    ]);
+
+    const { container } = render(<Console status="idle" />);
+
+    const approvalsBtn = await waitFor(() => {
+      const btn = [...container.querySelectorAll('.ptab')].find(b => b.textContent.includes('APPROVALS'));
+      expect(btn).toBeTruthy();
+      return btn;
+    });
+    fireEvent.click(approvalsBtn);
+
+    await waitFor(() => {
+      expect(container.querySelector('.apv')).toBeTruthy();
+    });
+
+    expect(container.querySelector('.apv-post')).toBeFalsy();
+    expect(container.querySelector('.apv-warn')).toBeFalsy();
+  });
+
+  it('publish card with missing author shows the fallback warning', async () => {
+    global.fetch = makeFetchWithApprovals([
+      {
+        id: 'li-no-author',
+        slug: 'hermes',
+        text: 'Post update',
+        state: 'awaiting_approval',
+        result: '',
+        proposed_action: {
+          tool: 'publish_to_linkedin',
+          input: { content: 'Hello!', author: '' },
+        },
+      },
+    ]);
+
+    const { container } = render(<Console status="idle" />);
+
+    const approvalsBtn = await waitFor(() => {
+      const btn = [...container.querySelectorAll('.ptab')].find(b => b.textContent.includes('APPROVALS'));
+      expect(btn).toBeTruthy();
+      return btn;
+    });
+    fireEvent.click(approvalsBtn);
+
+    await waitFor(() => {
+      expect(container.querySelector('.apv-author')).toBeTruthy();
+    });
+
+    expect(container.querySelector('.apv-author').textContent).toContain('author not set');
   });
 });

@@ -41,6 +41,7 @@ function normalizeAgentTask(task) {
     source: 'agent',
     title: `${agentName}: ${textSnippet}`,
     preview: task.result || '',
+    proposed_action: task.proposed_action || null,
     _raw: task,
   };
 }

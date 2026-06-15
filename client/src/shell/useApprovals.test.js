@@ -136,4 +136,35 @@ describe('useApprovals', () => {
       expect.objectContaining({ method: 'POST' })
     );
   });
+
+  it('agent task with proposed_action carries it through normalization', async () => {
+    const proposed_action = {
+      tool: 'publish_to_linkedin',
+      input: { content: 'Hello LinkedIn!', author: 'Randy Jewell' },
+    };
+    global.fetch = makeFetch({
+      agentTasks: [
+        {
+          id: 'at-li',
+          slug: 'hermes',
+          text: 'Post to LinkedIn',
+          state: 'awaiting_approval',
+          result: '',
+          proposed_action,
+        },
+      ],
+    });
+    const { result } = renderHook(() => useApprovals(null));
+    await waitFor(() => expect(result.current.pending.length).toBeGreaterThan(0));
+    const liItem = result.current.pending.find(p => p.id === 'at-li');
+    expect(liItem).toBeTruthy();
+    expect(liItem.proposed_action).toEqual(proposed_action);
+  });
+
+  it('agent task without proposed_action has proposed_action=null', async () => {
+    const { result } = renderHook(() => useApprovals(null));
+    await waitFor(() => expect(result.current.pending.length).toBe(2));
+    const agentItem = result.current.pending.find(p => p.source === 'agent');
+    expect(agentItem.proposed_action).toBeNull();
+  });
 });

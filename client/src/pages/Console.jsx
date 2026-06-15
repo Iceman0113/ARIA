@@ -297,19 +297,49 @@ export default function Console({
             {pending.length === 0 ? (
               <div className="apv-empty">All caught up — nothing needs your approval. ✓</div>
             ) : (
-              pending.map(item => (
-                <div className="apv" key={item.id}>
-                  <div className="ah">
-                    <span className="who">{item.source === 'agent' ? 'Agent Task' : 'Factory'}</span>
+              pending.map(item => {
+                const isPublish =
+                  item.proposed_action &&
+                  item.proposed_action.tool === 'publish_to_linkedin';
+
+                if (isPublish) {
+                  const { content, author } = item.proposed_action.input || {};
+                  return (
+                    <div className="apv" key={item.id}>
+                      <div className="ah">
+                        <span className="who">{item.source === 'agent' ? 'Agent Task' : 'Factory'}</span>
+                      </div>
+                      <div className="ttl2">{item.title}</div>
+                      <div className="apv-publish">▲ Will publish to LinkedIn</div>
+                      <div className="apv-author">
+                        {author
+                          ? `Posted as: ${author}`
+                          : '⚠ author not set — reject & rephrase'}
+                      </div>
+                      <blockquote className="apv-post">{content}</blockquote>
+                      <div className="apv-warn">Publishing is immediate — there is no undo.</div>
+                      <div className="acts">
+                        <button className="approve" onClick={() => approve(item)}>Approve &amp; publish</button>
+                        <button className="reject" onClick={() => reject(item)}>Reject</button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="apv" key={item.id}>
+                    <div className="ah">
+                      <span className="who">{item.source === 'agent' ? 'Agent Task' : 'Factory'}</span>
+                    </div>
+                    <div className="ttl2">{item.title}</div>
+                    <div className="prev">{item.preview}</div>
+                    <div className="acts">
+                      <button className="approve" onClick={() => approve(item)}>✓ Approve</button>
+                      <button className="reject" onClick={() => reject(item)}>Reject</button>
+                    </div>
                   </div>
-                  <div className="ttl2">{item.title}</div>
-                  <div className="prev">{item.preview}</div>
-                  <div className="acts">
-                    <button className="approve" onClick={() => approve(item)}>✓ Approve</button>
-                    <button className="reject" onClick={() => reject(item)}>Reject</button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}

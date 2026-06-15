@@ -190,6 +190,28 @@ header {
 .apv .reject { flex: 0 0 58px; background: rgba(255,80,90,.12); border-color: rgba(255,80,90,.4); color: #ff8a93; }
 .apv .reject:hover { background: rgba(255,80,90,.24); }
 .apv-empty { text-align: center; color: #5f7269; font-size: 11px; padding: 34px 12px; line-height: 1.5; }
+
+/* ── PUBLISH CARD (gated LinkedIn outward action) ── */
+.apv-publish {
+  font-size: 10px; font-weight: 700; letter-spacing: .10em; text-transform: uppercase;
+  color: var(--red); background: rgba(255,26,42,.10); border: 1px solid rgba(255,26,42,.30);
+  border-radius: 6px; padding: 4px 9px; margin-bottom: 7px; display: inline-block;
+}
+.apv-author {
+  font-size: 10px; color: var(--dim); margin-bottom: 6px; letter-spacing: .03em;
+}
+.apv-post {
+  margin: 0 0 7px; padding: 8px 10px;
+  background: rgba(45,212,168,.06); border-left: 2px solid var(--teal);
+  border-radius: 0 7px 7px 0; font-size: 10.5px; color: #c8e0d8; line-height: 1.5;
+  white-space: pre-wrap; word-break: break-word;
+  display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden;
+}
+.apv-warn {
+  font-size: 9.5px; color: #c47a00; letter-spacing: .03em; margin-bottom: 8px;
+  background: rgba(196,122,0,.10); border: 1px solid rgba(196,122,0,.25);
+  border-radius: 6px; padding: 3px 8px; display: inline-block;
+}
 .asections { flex: 1; overflow: auto; padding: 2px 12px 14px; }
 .asections::-webkit-scrollbar { width: 6px; }
 .asections::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 3px; }
