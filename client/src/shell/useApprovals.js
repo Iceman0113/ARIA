@@ -45,7 +45,7 @@ function normalizeAgentTask(task) {
   };
 }
 
-export function useApprovals(ws) {
+export function useApprovals(ws, agentTaskRefreshKey = 0) {
   const [pending, setPending] = useState([]);
 
   const hydrate = useCallback(async () => {
@@ -78,13 +78,21 @@ export function useApprovals(ws) {
     hydrate();
   }, [hydrate]);
 
-  // Re-hydrate on relevant WS events (factory kinds + agent task updates)
+  // Primary: re-hydrate whenever App's handleServerEvent increments agentTaskRefreshKey
+  // (App.onmessage is always bound to the live socket — no stale-ref problem)
+  useEffect(() => {
+    if (agentTaskRefreshKey === 0) return; // skip the initial mount (already hydrated above)
+    hydrate();
+  }, [agentTaskRefreshKey, hydrate]);
+
+  // Secondary: re-hydrate on factory WS events via the ws prop
+  // (server sends { type: ... } not { kind: ... } — use msg.type)
   useEffect(() => {
     if (!ws) return;
     const handler = (e) => {
       let msg;
       try { msg = JSON.parse(e.data); } catch { return; }
-      if (FACTORY_EVENT_KINDS.includes(msg.kind) || msg.kind === 'agent_task.updated') {
+      if (FACTORY_EVENT_KINDS.includes(msg.type) || FACTORY_EVENT_KINDS.includes(msg.kind)) {
         hydrate();
       }
     };

@@ -49,8 +49,9 @@ function CofounderApp({ config }) {
   const [heard, setHeard]                 = useState('');
   const [convoMode, setConvoMode]         = useState(() => localStorage.getItem(CONVO_KEY) !== '0');
   const [alwaysOn, setAlwaysOn]           = useState(() => localStorage.getItem(ALWAYSON_KEY) === '1');
-  const [workStates, setWorkStates]       = useState({});
-  const [mapRefreshKey, setMapRefreshKey] = useState(0);
+  const [workStates, setWorkStates]           = useState({});
+  const [mapRefreshKey, setMapRefreshKey]     = useState(0);
+  const [agentTaskRefreshKey, setAgentTaskRefreshKey] = useState(0);
 
   // ── Refs ────────────────────────────────────────────────────────
   const wsRef        = useRef(null);
@@ -183,6 +184,9 @@ function CofounderApp({ config }) {
       }
       case 'agent_state':
         setWorkStates(prev => ({ ...prev, [msg.slug]: { state: msg.state, updatedAt: Date.now() } }));
+        break;
+      case 'agent_task.updated':
+        setAgentTaskRefreshKey(k => k + 1);
         break;
       case 'freshness_update':
         window.dispatchEvent(new CustomEvent('aria:freshness', { detail: msg }));
@@ -392,6 +396,7 @@ function CofounderApp({ config }) {
           actions={actions}
           ws={wsRef.current}
           ampGetter={ampGetter}
+          agentTaskRefreshKey={agentTaskRefreshKey}
           {...micBarProps}
         />
       )}

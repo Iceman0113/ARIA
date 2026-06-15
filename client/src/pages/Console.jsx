@@ -54,7 +54,7 @@ function AgentBlock({ agent, ws }) {
     const handler = (e) => {
       let msg;
       try { msg = JSON.parse(e.data); } catch { return; }
-      if (msg.kind === 'agent_task.updated' && msg.slug === agent.slug) {
+      if (msg.type === 'agent_task.updated' && msg.slug === agent.slug) {
         refresh();
       }
     };
@@ -146,6 +146,7 @@ export default function Console({
   actions = [],
   ws = null,
   ampGetter = null,
+  agentTaskRefreshKey = 0,
   // MicBar props passed through from App
   orbState,
   latency,
@@ -164,7 +165,7 @@ export default function Console({
   const rootRef = useRef(null);
 
   const [activityTab, setActivityTab] = useState('activity');
-  const { pending, approve, reject } = useApprovals(ws);
+  const { pending, approve, reject } = useApprovals(ws, agentTaskRefreshKey);
 
   // Derived agent view from live workStates
   const agents = agentView(workStates);

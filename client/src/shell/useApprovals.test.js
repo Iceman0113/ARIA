@@ -92,7 +92,7 @@ describe('useApprovals', () => {
     );
   });
 
-  it('re-hydrates on agent_task.updated WS event', async () => {
+  it('re-hydrates on factory WS event via ws prop (msg.type)', async () => {
     const listeners = {};
     const mockWs = {
       addEventListener: (ev, fn) => { listeners[ev] = fn; },
@@ -104,8 +104,25 @@ describe('useApprovals', () => {
 
     const callCount = global.fetch.mock.calls.length;
 
-    // Simulate WS event
-    listeners['message']({ data: JSON.stringify({ kind: 'agent_task.updated', id: 'at1' }) });
+    // Server sends { type: ... } for factory events — must use msg.type, not msg.kind
+    listeners['message']({ data: JSON.stringify({ type: 'factory.task_ready', id: 't2' }) });
+
+    await waitFor(() => expect(global.fetch.mock.calls.length).toBeGreaterThan(callCount));
+  });
+
+  it('re-hydrates on agent_task.updated via agentTaskRefreshKey (primary path)', async () => {
+    // This is the primary path: App.handleServerEvent bumps agentTaskRefreshKey
+    // when it receives { type: 'agent_task.updated' } — no stale-ws-ref problem.
+    const { result, rerender } = renderHook(
+      ({ refreshKey }) => useApprovals(null, refreshKey),
+      { initialProps: { refreshKey: 0 } }
+    );
+    await waitFor(() => expect(result.current.pending.length).toBe(2));
+
+    const callCount = global.fetch.mock.calls.length;
+
+    // Simulate App bumping the key (as it does in handleServerEvent)
+    rerender({ refreshKey: 1 });
 
     await waitFor(() => expect(global.fetch.mock.calls.length).toBeGreaterThan(callCount));
   });
