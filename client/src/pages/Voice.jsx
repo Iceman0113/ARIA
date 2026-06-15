@@ -72,6 +72,7 @@ export default function Voice({ serverUrl }) {
   }
 
   return (
+    <div className="cosmic-root" style={{ height: 'auto', minHeight: '100%', overflow: 'auto' }}>
     <div className="voice-page">
       <h2>Voice</h2>
       <p className="muted">Upload a short, clean clip (6–15s). ARIA will speak in that voice.</p>
@@ -104,6 +105,7 @@ export default function Voice({ serverUrl }) {
         ))}
         {voices.length === 0 && <li className="muted">No cloned voices yet — upload one above.</li>}
       </ul>
+    </div>
     </div>
   );
 }

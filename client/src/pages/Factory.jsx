@@ -92,6 +92,7 @@ export default function Factory({ ws }) {
   const active = agents.filter(a => a.status === 'active');
 
   return (
+    <div className="cosmic-root" style={{ height: 'auto', minHeight: '100%', overflow: 'auto' }}>
     <div style={{ padding: 32, color: '#E6FFFB', fontFamily: 'system-ui, sans-serif', maxWidth: 1100, margin: '0 auto' }}>
       <h1 style={{ letterSpacing: 4, color: '#00E5CC', fontSize: 22 }}>FACTORY</h1>
       {error && <div style={{ background: '#3a0e0e', padding: 12, borderRadius: 6, color: '#ffb4b4', marginBottom: 16 }}>{error}</div>}
@@ -169,6 +170,7 @@ export default function Factory({ ws }) {
           </div>
         ))}
       </section>
+    </div>
     </div>
   );
 }
