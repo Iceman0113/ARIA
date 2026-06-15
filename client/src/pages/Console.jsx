@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import CosmicStage from '../cosmic/CosmicStage.jsx';
 import { agentView } from '../cosmic/agents.js';
 import MicBar from '../shell/MicBar.jsx';
+import { useApprovals } from '../shell/useApprovals.js';
 
 export default function Console({
   status = 'idle',
@@ -9,6 +10,7 @@ export default function Console({
   workStates = {},
   intel = [],
   actions = [],
+  ws = null,
   // MicBar props passed through from App
   orbState,
   latency,
@@ -27,6 +29,7 @@ export default function Console({
   const rootRef = useRef(null);
 
   const [activityTab, setActivityTab] = useState('activity');
+  const { pending, approve, reject } = useApprovals(ws);
 
   // Derived agent view from live workStates
   const agents = agentView(workStates);
@@ -126,7 +129,10 @@ export default function Console({
               className={`ptab${activityTab === 'approvals' ? ' active' : ''}`}
               onClick={() => setActivityTab('approvals')}
             >
-              APPROVALS<span className="tbadge zero">0</span>
+              APPROVALS
+              <span className={`tbadge${pending.length === 0 ? ' zero' : ''}`}>
+                {pending.length}
+              </span>
             </button>
           </div>
           <span
@@ -172,7 +178,26 @@ export default function Console({
           </div>
         ) : (
           <div className="approvals">
-            <div className="apv-empty">No pending approvals</div>
+            {pending.length === 0 ? (
+              <div className="apv-empty">All caught up — nothing needs your approval. ✓</div>
+            ) : (
+              pending.map(task => {
+                const m = task.proposed_manifest || {};
+                return (
+                  <div className="apv" key={task.id}>
+                    <div className="ah">
+                      <span className="who">{m.name || 'Agent'}</span>
+                    </div>
+                    <div className="ttl2">{m.name || task.id}</div>
+                    <div className="prev">{m.specialty || m.system_prompt?.slice(0, 120) || ''}</div>
+                    <div className="acts">
+                      <button className="approve" onClick={() => approve(task.id)}>✓ Approve</button>
+                      <button className="reject" onClick={() => reject(task.id)}>Reject</button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         )}
       </div>

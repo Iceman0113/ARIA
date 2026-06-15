@@ -385,6 +385,7 @@ function CofounderApp({ config }) {
           workStates={workStates}
           intel={intel}
           actions={actions}
+          ws={wsRef.current}
           {...micBarProps}
         />
       )}
