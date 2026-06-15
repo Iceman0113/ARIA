@@ -41,6 +41,7 @@ export default defineConfig({
       '/memory':      'http://localhost:3001',
       '/clients':     'http://localhost:3001',
       '/factory':     'http://localhost:3001',
+      '/agents':      'http://localhost:3001',
     },
   },
 });
