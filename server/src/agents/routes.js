@@ -1,5 +1,9 @@
 import { getSupabase } from '../supabase.js';
 import { ConfigDrivenAgent } from '../factory/runtime.js';
+import { runScout } from '../subagents/scout.js';
+import { runHunter } from '../subagents/hunter.js';
+import { runCreative } from '../subagents/creative.js';
+import { runHermes } from '../subagents/hermes.js';
 import {
   createTask,
   listTasks,
@@ -8,6 +12,41 @@ import {
   setState,
   deleteTask,
 } from './tasks-repo.js';
+
+/**
+ * Routing map for the 4 rich subagents.
+ * Each entry is an async (text, onEvent) => string runner.
+ *
+ * Input adaptation:
+ *   scout    — task=text, focus=undefined  (focus is optional)
+ *   hunter   — { notes: text }  (industry not required at runtime; notes carries the free-text intent)
+ *   creative — { objective: text }  (objective is the only required field)
+ *   hermes   — { task: text }
+ *
+ * Return normalization:
+ *   scout/hunter/creative always return structured objects → JSON.stringify
+ *   hermes returns { response, sessionId, durationMs } or { error } → use .response or .error
+ */
+const RICH_AGENTS = {
+  scout: async (text, onEvent) => {
+    const result = await runScout(text, undefined, onEvent);
+    return typeof result === 'string' ? result : JSON.stringify(result);
+  },
+  hunter: async (text, onEvent) => {
+    const result = await runHunter({ notes: text }, onEvent);
+    return typeof result === 'string' ? result : JSON.stringify(result);
+  },
+  creative: async (text, onEvent) => {
+    const result = await runCreative({ objective: text }, onEvent);
+    return typeof result === 'string' ? result : JSON.stringify(result);
+  },
+  hermes: async (text, onEvent) => {
+    const result = await runHermes({ task: text }, onEvent);
+    if (result && typeof result.response === 'string') return result.response;
+    if (result && typeof result.error === 'string') return result.error;
+    return JSON.stringify(result ?? '');
+  },
+};
 
 /**
  * Load a single spawned_agents row by slug (shadow or active).
@@ -30,8 +69,11 @@ async function loadAgentRow(slug) {
 }
 
 /**
- * Background runner — executes an agent task via ConfigDrivenAgent.
+ * Background runner — executes an agent task.
+ * For the 4 rich slugs (scout, hunter, creative, hermes) delegates to the real
+ * subagent; all others fall back to ConfigDrivenAgent.
  * Catches ALL errors; never throws. Updates task state and broadcasts events.
+ * Results are always parked as awaiting_approval — never auto-approved.
  */
 async function runTask(task, row, broadcast) {
   const { id, slug, text } = task;
@@ -40,13 +82,19 @@ async function runTask(task, row, broadcast) {
     broadcast({ type: 'agent_state', slug, state: 'working' });
     broadcast({ type: 'agent_task.updated', id });
 
-    const agent = new ConfigDrivenAgent(row);
-    const result = await agent.run(text, () => {});
-
-    // result is { text, shadow } from ConfigDrivenAgent.run()
-    const resultText = (result && typeof result.text === 'string')
-      ? result.text
-      : String(result ?? '');
+    let resultText;
+    if (RICH_AGENTS[slug]) {
+      // Route to the real subagent; result is already normalized to a string.
+      resultText = await RICH_AGENTS[slug](text, () => {});
+    } else {
+      // Generic config-driven path for beacon, verse, and any future agents.
+      const agent = new ConfigDrivenAgent(row);
+      const result = await agent.run(text, () => {});
+      // result is { text, shadow } from ConfigDrivenAgent.run()
+      resultText = (result && typeof result.text === 'string')
+        ? result.text
+        : String(result ?? '');
+    }
 
     await setState(id, 'awaiting_approval', { result: resultText });
     broadcast({ type: 'agent_state', slug, state: 'idle' });

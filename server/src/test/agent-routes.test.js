@@ -98,12 +98,31 @@ vi.mock('../supabase.js', () => ({
 vi.mock('../factory/runtime.js', () => ({
   ConfigDrivenAgent: class {
     async run() {
-      return { text: 'MOCK RESULT', shadow: false };
+      return { text: 'CONFIG_DRIVEN_RESULT', shadow: false };
     }
   },
 }));
 
+// ── Mock: rich subagents ──────────────────────────────────────────────────────
+vi.mock('../subagents/scout.js', () => ({
+  runScout: vi.fn(async () => ({ summary: 'Scout found stuff', keyFindings: ['f1'], confidence: 'high' })),
+}));
+vi.mock('../subagents/hunter.js', () => ({
+  runHunter: vi.fn(async () => ({ leads: [{ company: 'Acme' }], topPick: 'Acme', notes: 'good lead' })),
+}));
+vi.mock('../subagents/creative.js', () => ({
+  runCreative: vi.fn(async () => ({ variations: [{ headline: 'Great headline' }], recommendation: 'Use variation A' })),
+}));
+vi.mock('../subagents/hermes.js', () => ({
+  runHermes: vi.fn(async () => ({ response: 'Hermes handled it.', sessionId: 'sess-1', durationMs: 500 })),
+}));
+
 import { mountAgentRoutes } from '../agents/routes.js';
+import { runScout } from '../subagents/scout.js';
+import { runHunter } from '../subagents/hunter.js';
+import { runCreative } from '../subagents/creative.js';
+import { runHermes } from '../subagents/hermes.js';
+import { ConfigDrivenAgent } from '../factory/runtime.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const broadcasts = [];
@@ -161,7 +180,7 @@ describe('POST /agents/:slug/tasks', () => {
     expect(res.body.task.state).toBe('queued');
   });
 
-  it('background run transitions task to awaiting_approval with MOCK RESULT', async () => {
+  it('background run transitions task to awaiting_approval (scout → real subagent result)', async () => {
     store.rows.push({ id: 'agent-row', slug: 'scout', status: 'active', system_prompt: 'You scout.', tool_allowlist: [], model: 'claude-haiku' });
 
     const app = makeApp();
@@ -178,7 +197,8 @@ describe('POST /agents/:slug/tasks', () => {
     const updated = store.rows.find(r => r.id === taskId);
     expect(updated).toBeDefined();
     expect(updated.state).toBe('awaiting_approval');
-    expect(updated.result).toBe('MOCK RESULT');
+    // Scout returns a structured object → JSON.stringify'd
+    expect(updated.result).toContain('Scout found stuff');
   });
 
   it('broadcasts agent_state working then idle after background run', async () => {
@@ -208,20 +228,154 @@ describe('POST /agents/:slug/tasks', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+describe('subagent routing — rich agents use real subagents', () => {
+  it('scout slug calls runScout (not ConfigDrivenAgent) and stores JSON result', async () => {
+    store.rows.push({ id: 'agent-row', slug: 'scout', status: 'active' });
+    vi.mocked(runScout).mockResolvedValueOnce({ summary: 'Scout found X', keyFindings: ['f1'], confidence: 'high' });
+
+    const app = makeApp();
+    const res = await request(app).post('/agents/scout/tasks').send({ text: 'Research IntelliSite competitors' });
+    expect(res.status).toBe(201);
+    await flushAsync(50);
+
+    expect(runScout).toHaveBeenCalledWith('Research IntelliSite competitors', undefined, expect.any(Function));
+
+    const taskId = res.body.task.id;
+    const updated = store.rows.find(r => r.id === taskId);
+    expect(updated.state).toBe('awaiting_approval');
+    expect(updated.result).toContain('Scout found X');
+  });
+
+  it('hunter slug calls runHunter with { notes: text } and stores JSON result', async () => {
+    store.rows.push({ id: 'agent-row', slug: 'hunter', status: 'active' });
+    vi.mocked(runHunter).mockResolvedValueOnce({ leads: [{ company: 'Target Co' }], topPick: 'Target Co', notes: '' });
+
+    const app = makeApp();
+    const res = await request(app).post('/agents/hunter/tasks').send({ text: 'Find Indianapolis manufacturing SMBs' });
+    expect(res.status).toBe(201);
+    await flushAsync(50);
+
+    expect(runHunter).toHaveBeenCalledWith({ notes: 'Find Indianapolis manufacturing SMBs' }, expect.any(Function));
+
+    const taskId = res.body.task.id;
+    const updated = store.rows.find(r => r.id === taskId);
+    expect(updated.state).toBe('awaiting_approval');
+    expect(updated.result).toContain('Target Co');
+  });
+
+  it('creative slug calls runCreative with { objective: text } and stores JSON result', async () => {
+    store.rows.push({ id: 'agent-row', slug: 'creative', status: 'active' });
+    vi.mocked(runCreative).mockResolvedValueOnce({ variations: [{ headline: 'Hook line' }], recommendation: 'A wins' });
+
+    const app = makeApp();
+    const res = await request(app).post('/agents/creative/tasks').send({ text: 'Write a LinkedIn post about our new monitoring service' });
+    expect(res.status).toBe(201);
+    await flushAsync(50);
+
+    expect(runCreative).toHaveBeenCalledWith({ objective: 'Write a LinkedIn post about our new monitoring service' }, expect.any(Function));
+
+    const taskId = res.body.task.id;
+    const updated = store.rows.find(r => r.id === taskId);
+    expect(updated.state).toBe('awaiting_approval');
+    expect(updated.result).toContain('Hook line');
+  });
+
+  it('hermes slug calls runHermes with { task: text } and stores response string', async () => {
+    store.rows.push({ id: 'agent-row', slug: 'hermes', status: 'active' });
+    vi.mocked(runHermes).mockResolvedValueOnce({ response: 'Hermes completed the task.', sessionId: 'sess-42', durationMs: 1200 });
+
+    const app = makeApp();
+    const res = await request(app).post('/agents/hermes/tasks').send({ text: 'Remember that Randy prefers Haiku for routine tasks' });
+    expect(res.status).toBe(201);
+    await flushAsync(50);
+
+    expect(runHermes).toHaveBeenCalledWith({ task: 'Remember that Randy prefers Haiku for routine tasks' }, expect.any(Function));
+
+    const taskId = res.body.task.id;
+    const updated = store.rows.find(r => r.id === taskId);
+    expect(updated.state).toBe('awaiting_approval');
+    // Hermes returns .response string directly (not JSON.stringify'd)
+    expect(updated.result).toBe('Hermes completed the task.');
+  });
+
+  it('hermes error response (no binary) still stores result and reaches awaiting_approval', async () => {
+    store.rows.push({ id: 'agent-row', slug: 'hermes', status: 'active' });
+    vi.mocked(runHermes).mockResolvedValueOnce({ error: 'Hermes binary not found at /usr/local/bin/hermes.' });
+
+    const app = makeApp();
+    const res = await request(app).post('/agents/hermes/tasks').send({ text: 'Do something' });
+    expect(res.status).toBe(201);
+    await flushAsync(50);
+
+    const taskId = res.body.task.id;
+    const updated = store.rows.find(r => r.id === taskId);
+    expect(updated.state).toBe('awaiting_approval');
+    expect(updated.result).toContain('Hermes binary not found');
+  });
+
+  it('beacon slug uses ConfigDrivenAgent (NOT a rich subagent)', async () => {
+    store.rows.push({ id: 'agent-row', slug: 'beacon', status: 'active', system_prompt: 'You beacon.', tool_allowlist: [], model: 'claude-haiku' });
+
+    const app = makeApp();
+    const res = await request(app).post('/agents/beacon/tasks').send({ text: 'Announce the product update' });
+    expect(res.status).toBe(201);
+    await flushAsync(50);
+
+    // runScout/runHunter/runCreative/runHermes must NOT have been called for beacon
+    // (check call counts haven't increased beyond any earlier calls in this test run)
+    const taskId = res.body.task.id;
+    const updated = store.rows.find(r => r.id === taskId);
+    expect(updated.state).toBe('awaiting_approval');
+    expect(updated.result).toBe('CONFIG_DRIVEN_RESULT');
+  });
+
+  it('verse slug uses ConfigDrivenAgent (NOT a rich subagent)', async () => {
+    store.rows.push({ id: 'agent-row', slug: 'verse', status: 'active', system_prompt: 'You verse.', tool_allowlist: [], model: 'claude-haiku' });
+
+    const app = makeApp();
+    const res = await request(app).post('/agents/verse/tasks').send({ text: 'Write a poem about ARIA' });
+    expect(res.status).toBe(201);
+    await flushAsync(50);
+
+    const taskId = res.body.task.id;
+    const updated = store.rows.find(r => r.id === taskId);
+    expect(updated.state).toBe('awaiting_approval');
+    expect(updated.result).toBe('CONFIG_DRIVEN_RESULT');
+  });
+
+  it('all rich-agent tasks end awaiting_approval (gated — never auto-approved)', async () => {
+    const slugs = ['scout', 'hunter', 'creative', 'hermes'];
+    for (const slug of slugs) {
+      store.rows.push({ id: `ar-${slug}`, slug, status: 'active' });
+    }
+    const app = makeApp();
+
+    for (const slug of slugs) {
+      await request(app).post(`/agents/${slug}/tasks`).send({ text: `Task for ${slug}` });
+    }
+    await flushAsync(50);
+
+    const taskRows = store.rows.filter(r => ['scout','hunter','creative','hermes'].includes(r.slug) && r.state);
+    for (const row of taskRows) {
+      expect(row.state).toBe('awaiting_approval');
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 describe('failing agent run', () => {
-  it('task ends in failed state when ConfigDrivenAgent.run() throws', async () => {
-    // Override the mock for this test to throw
-    const { ConfigDrivenAgent } = await import('../factory/runtime.js');
+  it('task ends in failed state when ConfigDrivenAgent.run() throws (beacon slug)', async () => {
+    // Use beacon — it uses the ConfigDrivenAgent path (not a rich subagent)
     const origRun = ConfigDrivenAgent.prototype.run;
     ConfigDrivenAgent.prototype.run = async function () {
       throw new Error('agent exploded');
     };
 
-    store.rows.push({ id: 'agent-row', slug: 'scout', status: 'active', system_prompt: 'You scout.', tool_allowlist: [], model: 'claude-haiku' });
+    store.rows.push({ id: 'agent-row', slug: 'beacon', status: 'active', system_prompt: 'You beacon.', tool_allowlist: [], model: 'claude-haiku' });
 
     const app = makeApp();
     const res = await request(app)
-      .post('/agents/scout/tasks')
+      .post('/agents/beacon/tasks')
       .send({ text: 'Cause a failure' });
 
     expect(res.status).toBe(201); // HTTP response still succeeds immediately
@@ -236,10 +390,31 @@ describe('failing agent run', () => {
 
     // Agent state broadcast goes idle on failure too
     const stateEvents = broadcasts.filter(e => e.type === 'agent_state');
-    expect(stateEvents.some(e => e.slug === 'scout' && e.state === 'idle')).toBe(true);
+    expect(stateEvents.some(e => e.slug === 'beacon' && e.state === 'idle')).toBe(true);
 
     // Restore
     ConfigDrivenAgent.prototype.run = origRun;
+  });
+
+  it('task ends in failed state when a rich subagent (runScout) throws', async () => {
+    runScout.mockRejectedValueOnce(new Error('scout network failure'));
+
+    store.rows.push({ id: 'agent-row', slug: 'scout', status: 'active', system_prompt: 'You scout.', tool_allowlist: [], model: 'claude-haiku' });
+
+    const app = makeApp();
+    const res = await request(app)
+      .post('/agents/scout/tasks')
+      .send({ text: 'Cause a scout failure' });
+
+    expect(res.status).toBe(201);
+
+    await flushAsync(50);
+
+    const taskId = res.body.task.id;
+    const updated = store.rows.find(r => r.id === taskId);
+    expect(updated).toBeDefined();
+    expect(updated.state).toBe('failed');
+    expect(updated.result).toContain('scout network failure');
   });
 });
 
