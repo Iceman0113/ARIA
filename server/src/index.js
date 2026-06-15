@@ -19,6 +19,7 @@ import { RegistryWatcher } from './factory/registry-watcher.js';
 import { factoryRegistry } from './factory/tool-registry.js';
 import { mountVoiceRoutes } from './voice/routes.js';
 import { cloneSpeak } from './voice/speak.js';
+import { mountAgentRoutes } from './agents/routes.js';
 
 const app = express();
 app.use(cors({ origin: ['http://localhost:5174', 'http://localhost:5173'] }));
@@ -242,6 +243,7 @@ app.get('/auth/linkedin/status', async (_, res) => {
 // ── Agent Factory ─────────────────────────────────────────────────
 mountFactoryRoutes(app, broadcast);
 mountVoiceRoutes(app);
+mountAgentRoutes(app, { broadcast });
 
 // ── TTS proxy (Microsoft Edge neural voices, free, no API key) ────
 // Frontend POSTs text, gets back audio/mpeg. Default voice: en-GB-SoniaNeural.
