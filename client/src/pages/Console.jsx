@@ -6,6 +6,9 @@ import MicBar from '../shell/MicBar.jsx';
 export default function Console({
   status = 'idle',
   speaking = false,
+  workStates = {},
+  intel = [],
+  actions = [],
   // MicBar props passed through from App
   orbState,
   latency,
@@ -23,16 +26,10 @@ export default function Console({
 }) {
   const rootRef = useRef(null);
 
-  // P1 simulated agent states — P2 wires live workStates
-  const [states] = useState({
-    beacon: { state: 'working', task: 'Monitoring inbox' },
-    hunter: { state: 'working', task: 'Qualifying lead' },
-  });
-
   const [activityTab, setActivityTab] = useState('activity');
 
-  // Derived agent view
-  const agents = agentView(states);
+  // Derived agent view from live workStates
+  const agents = agentView(workStates);
   const docked = agents.filter(a => a.docked);
   const roaming = agents.filter(a => !a.docked);
 
@@ -142,13 +139,36 @@ export default function Console({
         </div>
         {activityTab === 'activity' ? (
           <div className="asections">
+            {/* Actions section */}
             <div className="asec">
               <div className="sh">
-                <span>Recent</span>
-                <span className="ct">0</span>
+                <span>Actions</span>
+                <span className="ct">{actions.length}</span>
               </div>
-              <div className="apv-empty">Activity will appear here (P2)</div>
+              {actions.map(a => (
+                <div className="acard" key={a.id} data-urgency={a.urgency}>
+                  <div className="t1">{a.title}</div>
+                  <div className="t2">{[a.meta, a.due].filter(Boolean).join(' · ')}</div>
+                </div>
+              ))}
             </div>
+            {/* Intel section */}
+            <div className="asec">
+              <div className="sh">
+                <span>Intel</span>
+                <span className="ct">{intel.length}</span>
+              </div>
+              {intel.map(item => (
+                <div className="acard" key={item.id}>
+                  <div className="t1">{item.msg}</div>
+                  <div className="t2">{[item.agent, item.source, item.time].filter(Boolean).join(' · ')}</div>
+                </div>
+              ))}
+            </div>
+            {/* Empty state */}
+            {actions.length === 0 && intel.length === 0 && (
+              <div className="apv-empty">No activity yet — agents are warming up.</div>
+            )}
           </div>
         ) : (
           <div className="approvals">

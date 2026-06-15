@@ -382,6 +382,9 @@ function CofounderApp({ config }) {
           status={cosmicStatus}
           speaking={isSpeaking}
           orbState={orbState}
+          workStates={workStates}
+          intel={intel}
+          actions={actions}
           {...micBarProps}
         />
       )}
