@@ -165,6 +165,15 @@ export function mountAgentRoutes(app, { broadcast }) {
             undefined,
             { caller: { kind: 'human_approved' } },
           );
+          // Tools signal soft failures by returning { error } (not throwing) —
+          // treat that as a failed publish, NOT a silent success.
+          if (execResult && execResult.error) {
+            await setState(req.params.id, 'failed', {
+              result: (task.result || '') + '\n\n[publish failed] ' + execResult.error,
+            });
+            broadcast({ type: 'agent_task.updated', id: req.params.id });
+            return res.status(502).json({ status: 'failed', id: req.params.id, error: execResult.error });
+          }
           await setState(req.params.id, 'approved', {
             result: (task.result || '') + '\n\n[published] ' + JSON.stringify(execResult).slice(0, 500),
           });

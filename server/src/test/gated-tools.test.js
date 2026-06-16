@@ -115,7 +115,8 @@ describe('GATED_TOOLS interception — publish_to_linkedin', () => {
 
     // Safety property 3: non-spawned caller executes normally
     expect(mockPublishLinkedInPost).toHaveBeenCalledOnce();
-    expect(mockPublishLinkedInPost).toHaveBeenCalledWith({ content: 'Approved post text', author: 'person' });
+    // tool's `content` is mapped to publishPost's `commentary` (+ visibility/author)
+    expect(mockPublishLinkedInPost).toHaveBeenCalledWith({ commentary: 'Approved post text', visibility: undefined, author: 'person' });
     // Returns the real tool result (not the queued sentinel)
     expect(result).toEqual({ postId: 'li-123', status: 'published' });
   });

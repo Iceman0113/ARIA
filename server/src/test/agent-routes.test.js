@@ -682,6 +682,21 @@ describe('POST /agents/tasks/:id/approve — gated outward-action (proposed_acti
     expect(updated.result).toContain('LinkedIn API error');
   });
 
+  it('approve with soft-error callTool result ({error}) → task ends failed, returns 502', async () => {
+    store.rows.push(makeLinkedInTask('831'));
+    // Tools signal soft failures by RETURNING { error } (not throwing).
+    mockCallTool.mockResolvedValueOnce({ error: 'No post body provided.' });
+
+    const res = await request(makeApp()).post('/agents/tasks/831/approve');
+
+    expect(res.status).toBe(502);
+    expect(res.body.status).toBe('failed');
+    const updated = store.rows.find(r => r.id === '831');
+    expect(updated.state).toBe('failed');
+    expect(updated.result).toContain('[publish failed]');
+    expect(updated.result).toContain('No post body provided.');
+  });
+
   it('approve with throwing callTool → still broadcasts agent_task.updated', async () => {
     store.rows.push(makeLinkedInTask('84'));
     mockCallTool.mockRejectedValueOnce(new Error('Network error'));

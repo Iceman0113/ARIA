@@ -407,7 +407,7 @@ export async function callTool(name, input, onEvent, broadcast = () => {}, ctx) 
     case 'update_client':          return upsertClient(input);
     case 'draft_conversion_email': return draftConversionEmail(input);
     case 'generate_proposal':      return generateProposal(input);
-    case 'publish_to_linkedin':    return publishLinkedInPost(input);
+    case 'publish_to_linkedin':    return publishLinkedInPost({ commentary: input.content ?? input.commentary, visibility: input.visibility, author: input.author });
     case 'get_linkedin_targets':   return getLinkedInTargets();
     case 'web_search':             return webSearch(input.query);
     case 'read_pdf':              return readPdf(input);
