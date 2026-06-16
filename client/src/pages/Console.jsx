@@ -1,8 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import CosmicStage from '../cosmic/CosmicStage.jsx';
-import { agentView } from '../cosmic/agents.js';
+import { agentView, AGENTS } from '../cosmic/agents.js';
 import MicBar from '../shell/MicBar.jsx';
 import { useApprovals } from '../shell/useApprovals.js';
+
+const AGENT_ORDER = Object.keys(AGENTS);
+
+// Smooth per-agent wander position across the open screen area (between the
+// panels). Shared by the rAF loop and the initial inline transform so agents
+// are spread out even before the first frame (or if the tab is backgrounded).
+function roamXY(i, T, W, H, lb, rb) {
+  const seed = i * 1.7;
+  const ox = 0.18 + 0.64 * ((i % 3) / 2);
+  const oy = 0.30 + 0.42 * Math.floor(i / 3);
+  const span = Math.max(160, rb - lb - 78);
+  let x = lb + ox * span + Math.sin(T + seed) * Math.min(70, span * 0.12);
+  let y = oy * H + Math.cos(T * 0.8 + seed) * 46 + Math.sin(T * 1.6 + seed) * 8 - 39;
+  x = Math.max(lb, Math.min(rb - 78, x));
+  y = Math.max(86, Math.min(H - 176, y));
+  return { x, y };
+}
+function roamBounds(W, editorOpen, activityOpen) {
+  return { lb: editorOpen ? 332 : 46, rb: activityOpen ? W - 292 : W - 46 };
+}
 
 // ── Agent-task API helpers ─────────────────────────────────────────────────
 async function apiFetch(path, opts = {}) {
@@ -167,6 +187,28 @@ export default function Console({
   const [activityTab, setActivityTab] = useState('activity');
   const [editorOpen, setEditorOpen] = useState(true);
   const [activityOpen, setActivityOpen] = useState(true);
+  const roamerRefs = useRef({});
+
+  // Idle agents wander around the open screen area (between the panels) via a
+  // smooth per-agent sinusoidal path; working agents are filtered out (they
+  // render in the dock instead). Ported from the approved prototype's tickRoamers.
+  useEffect(() => {
+    let raf, T = 0;
+    const tick = () => {
+      T += 0.006;
+      const W = window.innerWidth, H = window.innerHeight;
+      const { lb, rb } = roamBounds(W, editorOpen, activityOpen);
+      for (const slug of Object.keys(roamerRefs.current)) {
+        const el = roamerRefs.current[slug];
+        if (!el) continue;
+        const { x, y } = roamXY(AGENT_ORDER.indexOf(slug), T, W, H, lb, rb);
+        el.style.transform = `translate(${x}px, ${y}px)`;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [editorOpen, activityOpen]);
   const { pending, approve, reject } = useApprovals(ws, agentTaskRefreshKey);
 
   // Derived agent view from live workStates
@@ -346,17 +388,20 @@ export default function Console({
         )}
       </div>
 
-      {/* Roaming agents */}
-      {roaming.map((a, i) => (
+      {/* Roaming agents — positioned each frame by the wander loop below */}
+      {roaming.map((a) => (
         <div
           className="roamer"
           key={a.slug}
+          ref={el => { if (el) roamerRefs.current[a.slug] = el; else delete roamerRefs.current[a.slug]; }}
           style={{
             '--ac': a.ac,
-            left: `${18 + i * 12}%`,
-            top: `${45 + (i % 2) * 12}%`,
-            '--rdur': `${9 + i * 1.7}s`,
-            '--rdelay': `${i * 0.8}s`,
+            transform: (() => {
+              const W = window.innerWidth, H = window.innerHeight;
+              const { lb, rb } = roamBounds(W, editorOpen, activityOpen);
+              const { x, y } = roamXY(AGENT_ORDER.indexOf(a.slug), 0, W, H, lb, rb);
+              return `translate(${x}px, ${y}px)`;
+            })(),
           }}
         >
           <div className="av">
