@@ -282,15 +282,18 @@ header {
   position: absolute; width: 78px; text-align: center; pointer-events: auto; cursor: pointer;
   z-index: 5;   /* above the orb canvas (z-index:1) so agents are visible, below the panels */
   transition: opacity .5s;
-  /* Gentle continuous wander so idle agents feel alive. Per-roamer duration/delay
-     (set inline) keep them out of lockstep. */
-  animation: roamDrift var(--rdur, 12s) ease-in-out var(--rdelay, 0s) infinite alternate;
+  /* Gentle continuous wander so idle agents feel alive. A closed loop (0%==100%)
+     with no `alternate` floats smoothly instead of pendulum-reversing at the ends.
+     will-change gives each its own compositor layer (smoother under GPU load). */
+  will-change: transform;
+  animation: roamDrift var(--rdur, 16s) ease-in-out var(--rdelay, 0s) infinite;
 }
 @keyframes roamDrift {
-  0%   { transform: translate(-18px, -10px); }
-  35%  { transform: translate(20px, -22px); }
-  70%  { transform: translate(14px, 18px); }
-  100% { transform: translate(-22px, 12px); }
+  0%   { transform: translate(0px, 0px); }
+  25%  { transform: translate(15px, -12px); }
+  50%  { transform: translate(3px, 15px); }
+  75%  { transform: translate(-14px, 5px); }
+  100% { transform: translate(0px, 0px); }
 }
 .roamer .av {
   width: 74px; height: 74px; border-radius: 50%; overflow: hidden; position: relative; margin: 0 auto;

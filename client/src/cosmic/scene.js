@@ -30,7 +30,10 @@ export function createScene(canvas, { onStatus } = {}) {
 
   // ── Renderer ─────────────────────────────────────────────────────
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // Cap at 1.5 (not 2): on integrated GPUs the bloom pass at full 2x retina
+  // density is the main source of choppiness; 1.5 nearly halves the pixel
+  // count through render+bloom with little visible loss.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.setSize(canvasW(), canvasH(), false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;          // r128: outputEncoding = sRGBEncoding
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
