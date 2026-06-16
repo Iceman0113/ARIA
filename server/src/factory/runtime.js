@@ -1,5 +1,5 @@
 import { getClient } from '../anthropic.js';
-import { TOOL_DEFINITIONS, callTool, toApiTools } from '../tools.js';
+import { TOOL_DEFINITIONS, callTool, toApiTools, GATED_TOOLS } from '../tools.js';
 
 const MAX_ITER = Number(process.env.FACTORY_RUNTIME_MAX_ITER || 8);
 
@@ -17,12 +17,18 @@ export class ConfigDrivenAgent {
   _filteredTools() {
     const allow = new Set(this._row.tool_allowlist || []);
     return TOOL_DEFINITIONS.filter(t =>
-      allow.has(t.name) && t.factory_allowed !== false
+      // A gated tool (e.g. publish_to_linkedin) is intentionally marked
+      // factory_allowed:false so it never RUNS inside a spawned agent — but the
+      // gated-action design needs the agent to be able to *call* it so the call
+      // gets intercepted + captured for human approval (see GATED_TOOLS in
+      // tools.js). So gated tools are exposed when allowlisted; their safety
+      // comes from interception (capture-not-execute), not from being withheld.
+      allow.has(t.name) && (t.factory_allowed !== false || GATED_TOOLS.has(t.name))
     );
-    // NB: second condition is belt-and-suspenders. The Skills Report already
-    // restricts candidates to factory_allowed:true tools, but if the registry
-    // flag flips later (e.g. we mark a tool dangerous post-hoc), the
-    // dispatcher honors that change immediately, without a DB migration.
+    // NB: the factory_allowed gate is belt-and-suspenders for NON-gated tools.
+    // The Skills Report already restricts candidates to factory_allowed:true
+    // tools, but if the flag flips later (e.g. we mark a tool dangerous
+    // post-hoc), the dispatcher honors that immediately, without a DB migration.
   }
 
   async run(userMessage, onEvent) {

@@ -366,7 +366,7 @@ export function toApiTools(defs) {
  * and returned immediately without execution. The ONLY execution path is
  * the approve handler in agents/routes.js with caller { kind: 'human_approved' }.
  */
-const GATED_TOOLS = new Set(['publish_to_linkedin']);
+export const GATED_TOOLS = new Set(['publish_to_linkedin']);
 
 export async function callTool(name, input, onEvent, broadcast = () => {}, ctx) {
   // broadcast defaults to a no-op so callers that don't need it (e.g. monitor.js
