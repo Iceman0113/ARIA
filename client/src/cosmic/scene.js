@@ -272,7 +272,7 @@ export function createScene(canvas, { onStatus } = {}) {
     // Cosmic orb image: slow swirl + breathing + voice brightness
     orbUniforms.uVoice.value = Math.min(1.0, Math.max(0.0, (b - 0.45)) * 0.4 + sAmp * 0.9);
     const orbScale = 0.9 + sAmp * 0.10;
-    orbPlane.rotation.z += 0.0009;
+    orbPlane.rotation.z += 0.0032;   // clearly-visible galaxy swirl
     orbPlane.scale.setScalar(orbScale);
 
     // Halo

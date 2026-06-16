@@ -165,6 +165,8 @@ export default function Console({
   const rootRef = useRef(null);
 
   const [activityTab, setActivityTab] = useState('activity');
+  const [editorOpen, setEditorOpen] = useState(true);
+  const [activityOpen, setActivityOpen] = useState(true);
   const { pending, approve, reject } = useApprovals(ws, agentTaskRefreshKey);
 
   // Derived agent view from live workStates
@@ -173,30 +175,29 @@ export default function Console({
   const roaming = agents.filter(a => !a.docked);
 
   // Recede panels while ARIA is busy (listening / speaking / processing)
-  useEffect(() => {
-    rootRef.current?.classList.toggle('aria-busy', status !== 'idle');
-  }, [status]);
-
-  // Panels start open — toggle via class so cosmic.css handles dock offsets
-  useEffect(() => {
-    const el = rootRef.current;
-    if (!el) return;
-    el.classList.add('editor-open', 'activity-open');
-  }, []);
+  // Reactive root classes — aria-busy (recede/dim on voice activity) + the two
+  // panel-open flags (which drive the dock offsets in cosmic.css). Reactive
+  // (not imperative classList) so React re-renders never drop them.
+  const rootClass = [
+    'cosmic-root',
+    status !== 'idle' ? 'aria-busy' : '',
+    editorOpen ? 'editor-open' : '',
+    activityOpen ? 'activity-open' : '',
+  ].filter(Boolean).join(' ');
 
   return (
-    <div className="cosmic-root" ref={rootRef}>
+    <div className={rootClass} ref={rootRef}>
       {/* Background 3-D scene */}
       <CosmicStage status={status} speaking={speaking} ampGetter={ampGetter} />
 
       {/* LEFT — Agent Tasking */}
-      <div className="editor glass">
+      <div className={`editor glass${editorOpen ? '' : ' collapsed'}`}>
         <span
           className="ecol"
-          title="Collapse panel"
-          onClick={() => rootRef.current?.classList.toggle('editor-open')}
+          title={editorOpen ? 'Collapse panel' : 'Expand panel'}
+          onClick={() => setEditorOpen(o => !o)}
         >
-          ‹
+          {editorOpen ? '‹' : '›'}
         </span>
         <h3>AGENT TASKING</h3>
         <div className="sub">Edit, queue &amp; reorder what each agent works on.</div>
@@ -232,7 +233,7 @@ export default function Console({
       </div>
 
       {/* RIGHT — Activity / Approvals */}
-      <div className="activity glass">
+      <div className={`activity glass${activityOpen ? '' : ' collapsed'}`}>
         <div className="atop">
           <div className="ptabs">
             <button
@@ -253,10 +254,10 @@ export default function Console({
           </div>
           <span
             className="col"
-            title="Collapse"
-            onClick={() => rootRef.current?.classList.toggle('activity-open')}
+            title={activityOpen ? 'Collapse' : 'Expand'}
+            onClick={() => setActivityOpen(o => !o)}
           >
-            ›
+            {activityOpen ? '›' : '‹'}
           </span>
         </div>
         {activityTab === 'activity' ? (

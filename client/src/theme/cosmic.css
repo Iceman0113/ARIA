@@ -280,6 +280,7 @@ header {
 #roamers { position: fixed; inset: 0; z-index: 12; pointer-events: none; }
 .roamer {
   position: absolute; width: 78px; text-align: center; pointer-events: auto; cursor: pointer;
+  z-index: 5;   /* above the orb canvas (z-index:1) so agents are visible, below the panels */
   transition: opacity .5s;
   /* Gentle continuous wander so idle agents feel alive. Per-roamer duration/delay
      (set inline) keep them out of lockstep. */
