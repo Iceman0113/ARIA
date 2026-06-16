@@ -280,7 +280,16 @@ header {
 #roamers { position: fixed; inset: 0; z-index: 12; pointer-events: none; }
 .roamer {
   position: absolute; width: 78px; text-align: center; pointer-events: auto; cursor: pointer;
-  transition: opacity .5s, transform .5s ease;
+  transition: opacity .5s;
+  /* Gentle continuous wander so idle agents feel alive. Per-roamer duration/delay
+     (set inline) keep them out of lockstep. */
+  animation: roamDrift var(--rdur, 12s) ease-in-out var(--rdelay, 0s) infinite alternate;
+}
+@keyframes roamDrift {
+  0%   { transform: translate(-18px, -10px); }
+  35%  { transform: translate(20px, -22px); }
+  70%  { transform: translate(14px, 18px); }
+  100% { transform: translate(-22px, 12px); }
 }
 .roamer .av {
   width: 74px; height: 74px; border-radius: 50%; overflow: hidden; position: relative; margin: 0 auto;

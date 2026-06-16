@@ -354,6 +354,8 @@ export default function Console({
             '--ac': a.ac,
             left: `${18 + i * 12}%`,
             top: `${45 + (i % 2) * 12}%`,
+            '--rdur': `${9 + i * 1.7}s`,
+            '--rdelay': `${i * 0.8}s`,
           }}
         >
           <div className="av">
